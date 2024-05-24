@@ -9,10 +9,14 @@ from data.unify_endpoints_data import model_provider, dynamic_provider
 st.set_page_config("LLM Resume Analyser", page_icon="🚀")
     
 st.title("LLM Resume Analyser 🚀")
-st.text("Improve your resume with the power of LLMs")
+"""Improve your resume with the power of LLMs"""
 
 with st.sidebar:
-    st.text("Select your favourite LLM model and upload your resume")
+    """
+    Select your favourite LLM model 
+    and boost your resume
+    
+    """
     
     # input for Unify API Key
     st.session_state.unify_api_key = st.text_input("Unify API Key*", type="password",
@@ -30,13 +34,12 @@ with st.sidebar:
     st.session_state.endpoint = f"{model_name}@{provider_name}"
 
     # Document uploader
-    st.session_state.pdf_doc = st.file_uploader(label="Upload your Resume*", type=("pdf","docx"),
+    st.session_state.resume_doc = st.file_uploader(label="Upload your Resume*", type=("pdf","docx"),
                                                  accept_multiple_files=False)
     # file_upload = st.file_uploader("Upload Resume: ", type=['PDF', 'DOCX']) <-whitout accept_multiple_files=True, without session_state
     
-    # Submit Button
-    if st.button("Submit your Resume", type="primary"):
-        process_inputs()
+    # Paste Text Job Offer
+    st.session_state.job_offer_text = st.text_area(label = "Job_offer_text", key="Job_offer", placeholder="Job offer text")
 
 
 # if file_upload:
