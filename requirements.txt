@@ -1,0 +1,14 @@
+numpy
+pandas
+streamlit
+streamlit_option_menu
+streamlit_extras
+PyPDF2
+langchain
+langchain-community
+openai
+tiktoken
+faiss-cpu
+unifyai
+unify
+
