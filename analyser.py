@@ -52,13 +52,13 @@ if 'job_title' not in st.session_state:
 
 
 with st.sidebar:
-    st.write("Select your favourite LLM model and boost your resume")
+    st.write("Select your favorite LLM model and boost your resume with the power of AI.")
     st.session_state.unify_api_key = st.text_input("Unify API Key*", type="password",
                                                    placeholder="Enter Unify API Key")
     
     with st.expander("Model and Provider Selection"):
         model_name = st.selectbox("Select Model", options=model_provider.keys(), index=20,
-                                  placeholder="Model", help="All your favourite models with Unify")
+                                  placeholder="Model", help="All your favorite models with Unify API")
     
         if st.toggle("Enable Dynamic Routing"):
             provider_name = st.radio("Select a Provider", options=dynamic_provider, 
@@ -69,6 +69,10 @@ with st.sidebar:
         model_temperature = st.slider("Temperature", min_value=0.1, max_value=1.0, value=0.3, step=0.1)
         
     st.session_state.endpoint = f"{model_name}@{provider_name}"
+    
+    
+    
+    
     st.session_state.resume_doc = st.file_uploader(label="Upload your Resume", type=("pdf","docx"), accept_multiple_files=False)
 
     if st.session_state.resume_doc is not None and st.button("Process resume"): 
@@ -79,13 +83,15 @@ with st.sidebar:
             st.error("Unable to recognize the document. Please try a compatible format.")
 
     st.session_state.job_offer_text = st.text_area(label="Job offer description", key="Job_offer", placeholder="Paste here the job offer description")
-    st.session_state.job_title = st.text_input("Job title", key="Job_title", placeholder="Enter here the job title")
-
+    
+    st.session_state.job_title = st.text_input("Job title", key="Job_title", placeholder="enter here your desired job title")
+    
+    
 model = ChatUnify(
-    model=st.session_state.endpoint,
-    unify_api_key=st.session_state.unify_api_key,
-    temperature=model_temperature
-)
+        model=st.session_state.endpoint,
+        unify_api_key=st.session_state.unify_api_key,
+        temperature=model_temperature
+        )
 
 feature_match_prompt = PromptTemplate(
     input_variables=["resume", "job_offer", "job_title"],
@@ -113,7 +119,7 @@ feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_c
 
 st.markdown("### Features")
 
-tab1, tab2 = st.tabs(["Resume Analysis", "Other Features"])
+tab1, tab2, tab3 = st.tabs(["Resume Analysis", "Advanced Analysis", "Print a Report"])
 
 with tab1:
     feature_match_button = st.button("RESUME MATCH WITH THE JOB OFFER")
