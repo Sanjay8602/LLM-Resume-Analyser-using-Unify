@@ -125,11 +125,11 @@ feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_c
 col1, col2 = st.columns(2)
 
 with col1:
-    feature_match_button = st.button("MATCH REVIEW")
+    feature_match_button = st.button("RESUME MATCH WITH THE JOB OFFER")
     feature_3 = st.button("FEATURE 3")
 
 with col2:
-    feature_suggested_changes_button = st.button("HOW TO IMPROVE RESUME?")
+    feature_suggested_changes_button = st.button("HOW TO IMPROVE MY RESUME?")
     feature_4 = st.button("FEATURE 4")
 
 
@@ -147,6 +147,8 @@ with st.container(border=True,height=600):
                 st.write(match_answer)
             except ValueError as e:
                 st.error("something went wrong. Please try again.")  
+        else:
+            st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
     # action for feature 2 button            
     elif feature_suggested_changes_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
@@ -159,6 +161,8 @@ with st.container(border=True,height=600):
                 st.write(suggested_changes_answer)
             except ValueError as e:
                 st.error("something went wrong. Please try again.")
+        else:
+            st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
     elif feature_3:
         st.write("Feature 3 is not yet implemented")
     elif feature_4:
