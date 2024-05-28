@@ -23,7 +23,7 @@ You find more model/provider information in the [Unify benchmark interface](http
 6.  
 
 ## Repository and Deployment
-The repository is located at [LLM Resume Analiser](https://github.com/Sanjay8602/LLM-Resume-Analyser-using-Unify.git   )(https://github.com/OscarArroyoVega/LLM_Resume_Analyser_Unify).
+The repository is located at [LLM Resume Analiser](https://github.com/OscarArroyoVega/LLM_Resume_Analyser_Unify).
 To run the application locally, follow these steps:
 1. Clone the repository to your local machine.
 2. Set up your virtual environment and install the dependencies from `requirements.txt`:
