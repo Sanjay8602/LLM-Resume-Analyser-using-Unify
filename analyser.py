@@ -68,7 +68,7 @@ with st.sidebar:
     st.session_state.endpoint = f"{model_name}@{provider_name}"
 
     # Document uploader
-    st.session_state.resume_doc = st.file_uploader(label="Upload your Resume*", type=("pdf","docx"),
+    st.session_state.resume_doc = st.file_uploader(label="Upload your Resume", type=("pdf","docx"),
                                                  accept_multiple_files=False)
     if st.session_state.resume_doc is not None:
         if st.button("Process resume"): 
