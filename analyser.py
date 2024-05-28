@@ -104,6 +104,7 @@ feature_match_prompt=PromptTemplate(
             b. Highlight the strengths and weaknesses of the applicant in relation to the specified job requirements.
         {resume_text} {job_description} {job_title}"""
     )
+
 feature_suggested_changes_prompt=PromptTemplate(
         input_variables=["resume", "job_offer", "job_title"],
         template = """You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
@@ -126,14 +127,15 @@ col1, col2 = st.columns(2)
 with col1:
     feature_match_button = st.button("MATCH REVIEW")
     feature_3 = st.button("FEATURE 3")
-feature_suggested_changes_chain
+
 with col2:
     feature_suggested_changes_button = st.button("HOW TO IMPROVE RESUME?")
     feature_4 = st.button("FEATURE 4")
 
 
-# action for feature 1 button
+
 with st.container(border=True,height=600):
+    # action for feature 1 button
     if feature_match_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
             try:
@@ -145,7 +147,7 @@ with st.container(border=True,height=600):
                 st.write(match_answer)
             except ValueError as e:
                 st.error("something went wrong. Please try again.")  
-                
+    # action for feature 2 button            
     elif feature_suggested_changes_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
             try:
@@ -153,7 +155,12 @@ with st.container(border=True,height=600):
                                                                job_offer = st.session_state.job_offer_text, 
                                                                job_title = st.session_state.job_title,
                                                                )
-                st.markdown("### Matching Skills and Experiences")
+                st.markdown("### Suggestions to improve the resume")
                 st.write(suggested_changes_answer)
             except ValueError as e:
                 st.error("something went wrong. Please try again.")
+    elif feature_3:
+        st.write("Feature 3 is not yet implemented")
+    elif feature_4:
+        st.write("Feature 4 is not yet implemented")
+        
