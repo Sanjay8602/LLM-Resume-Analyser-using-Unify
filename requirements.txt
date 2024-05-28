@@ -4,6 +4,7 @@ streamlit
 streamlit_option_menu
 streamlit_extras
 PyPDF2
+python-docx
 langchain
 langchain-community
 openai
