@@ -39,7 +39,7 @@ pip install -r requirements.txt
 3. Run app.py from Streamlit module 
 
 ```bash
-python -m streamlit run app.py
+python -m streamlit run analyser.py
 ```
 
 ## Contributors
