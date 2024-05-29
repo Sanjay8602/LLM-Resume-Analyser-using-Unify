@@ -52,7 +52,7 @@ if 'job_title' not in st.session_state:
 
 
 with st.sidebar:
-    st.write("Select your favorite LLM model and boost your resume with the power of AI.")
+    st.write("Select your favorite LLM model to assist you in enhancing your career prospects.")
     st.session_state.unify_api_key = st.text_input("Unify API Key*", type="password",
                                                    placeholder="Enter Unify API Key")
     
@@ -119,7 +119,7 @@ feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_c
 
 st.markdown("### Features")
 
-tab1, tab2, tab3 = st.tabs(["Resume Analysis", "Advanced Analysis", "Print a Report"])
+tab1, tab2, tab3 = st.tabs(["Match a job offer", "General Improvements", "Career advice", "Apply changes to your Resume"])
 
 with tab1:
     feature_match_button = st.button("RESUME MATCH WITH THE JOB OFFER")
