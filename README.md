@@ -17,10 +17,10 @@ You find more model/provider information in the [Unify benchmark interface](http
 ## Usage:
 1. Visit the application: [LLM Resume Analyser](https://ai-llm-resume-analyser.streamlit.app/)
 2. Input your Unify API Key. If you don’t have one yet, log in to the [Unify Console](https://console.unify.ai/) to get yours.
-3. 
+3. Select the model and provider of your choice
 4. Upload your document(s) and click the Submit button
-5. 
-6.  
+5. Enter your job description and job title
+6. Gain insights on Resume match with the job offer and on how to improve your Resume
 
 ## Repository and Deployment
 The repository is located at [LLM Resume Analiser](https://github.com/OscarArroyoVega/LLM_Resume_Analyser_Unify).
