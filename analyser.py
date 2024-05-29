@@ -73,7 +73,7 @@ with st.sidebar:
     
     
     
-    st.session_state.resume_doc = st.file_uploader(label="Upload your Resume", type=("pdf","docx"), accept_multiple_files=False)
+    st.session_state.resume_doc = st.file_uploader(label="Upload your Resume*", type=("pdf","docx"), accept_multiple_files=False)
 
     if st.session_state.resume_doc is not None and st.button("Process resume"): 
         try:
@@ -82,9 +82,9 @@ with st.sidebar:
         except Exception as e:
             st.error("Unable to recognize the document. Please try a compatible format.")
 
-    st.session_state.job_offer_text = st.text_area(label="Job offer description", key="Job_offer", placeholder="Paste here the job offer description")
+    st.session_state.job_offer_text = st.text_area(label="Job offer description*", key="Job_offer", placeholder="Paste here the job offer description")
     
-    st.session_state.job_title = st.text_input("Job title", key="Job_title", placeholder="enter here your desired job title")
+    st.session_state.job_title = st.text_input("Job title*", key="Job_title", placeholder="enter here your desired job title")
     
     
 model = ChatUnify(
