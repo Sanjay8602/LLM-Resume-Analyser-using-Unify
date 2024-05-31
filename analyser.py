@@ -9,7 +9,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from data.unify_endpoints_data import model_provider, dynamic_provider
 from langchain_unify.chat_models import ChatUnify
-from analyser.ChatUnify import model_unify
+
 
 # Function to extract text from a PDF or DOCX document
 def extract_text_from_file(file):
@@ -88,11 +88,11 @@ with st.sidebar:
     
     
     
-#model = ChatUnify(
- #       model=st.session_state.endpoint,
- #       unify_api_key=st.session_state.unify_api_key,
-  #      temperature=model_temperature
-  #   )
+model = ChatUnify(
+        model=st.session_state.endpoint,
+        unify_api_key=st.session_state.unify_api_key,
+        temperature=model_temperature
+        )
 
 
 
