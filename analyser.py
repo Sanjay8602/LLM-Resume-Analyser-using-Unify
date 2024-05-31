@@ -9,7 +9,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from data.unify_endpoints_data import model_provider, dynamic_provider
 from langchain_unify.chat_models import ChatUnify
-
+from analyser.ChatUnify import model_unify
 
 # Function to extract text from a PDF or DOCX document
 def extract_text_from_file(file):
@@ -88,14 +88,15 @@ with st.sidebar:
     
     
     
-model = ChatUnify(
-        model=st.session_state.endpoint,
-        unify_api_key=st.session_state.unify_api_key,
-        temperature=model_temperature
-        )
+#model = ChatUnify(
+ #       model=st.session_state.endpoint,
+ #       unify_api_key=st.session_state.unify_api_key,
+  #      temperature=model_temperature
+  #   )
 
 
-def feature_match_chain(resume_text, job_offer, job_title):
+
+def feature_match_function(resume_text, job_offer, job_title):
     feature_match_prompt = PromptTemplate(
         input_variables=["resume_text", "job_offer", "job_title"],
         template="""You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
@@ -106,13 +107,13 @@ def feature_match_chain(resume_text, job_offer, job_title):
             - Soft skills: 3 * (matching soft skill)
             - Hard skills: 2 * (matching hard skill)
             - Experience: 4 * (each relevant experience for the role)
-            - Keywords: 20 - 2* (each missing keyword)
+            - Keywords: 20 - 1 * (each missing keyword)
         3. Calculate a total score at the end in this way:
             - Total score = (soft_skills_score + hard_skills_score + experience_score + keywords_score)*100/80  
         4. Generate an analysis summary that includes the following information:
                 - Whether the candidate's profile aligns with the role description in the job offer with mention to the total score.
                 - Highlight the strengths and weaknesses of the applicant in relation to the specified job offer description.
-        5. Provide an output in JSON format (without any title as JSON Output:) with the scores previously generated following the template below:
+        5. Provide an output in JSON format (without any title as "JSON Output" or "scores") with the scores previously generated following the template below:
                 {{
                     "soft_skills_score": <soft_skills_score>,
                     "hard_skills_score": <hard_skills_score>,
@@ -123,10 +124,11 @@ def feature_match_chain(resume_text, job_offer, job_title):
         job_offer: {job_offer}
         job_title: {job_title}"""
     )
-    feature_match_chain = LLMChain(llm=model, prompt=feature_match_prompt, verbose=True)
+    feature_match_chain = LLMChain(llm=model, prompt=feature_match_prompt, verbose=False)
     match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
                                                    job_offer=st.session_state.job_offer_text, 
                                                    job_title=st.session_state.job_title)
+    print(match_answer) 
     return match_answer
 
 
@@ -180,16 +182,24 @@ def match_report(match_answer):
 
     match_report = text_analysis, fig, scores_dict
     
+    print (match_report)
     return match_report
+
 
 feature_suggested_changes_prompt = PromptTemplate(
     input_variables=["resume_text", "job_offer", "job_title"],
     template="""You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
-    Your task is to review the provided resume against the given job offer description. You must answer in a professional tone.
-    1. Make a list of matching skills and experiences and missing keywords.
-    2. Make a list of the missing keywords and experiences hidden in the resume but that current resume implies.
-    3. With the previous lists as context, build an answer in bullet point format proposing rephrasing and adding or deleting some keywords or experiences to improve the resume match with the job offer.
-    {resume_text} {job_offer} {job_title}"""
+        Your task is to review the provided resume against the given job offer description and job title. 
+        Follow the steps below to complete the task:
+            1. Make a list of matching soft skills, matching hard skills, matching qualifications, matching experiences.
+            2. Make a list of keywords in the job offer and in the resume.
+            4. Make a list of the missing keywords in the resume.
+            5. make a list of the missing keywords that are missing but that current resume implies and could be added
+            6. make a list of the missing experiences that are missing but that current resume implies and could be added.
+            3. With the previous lists as context, build a bullet point answer proposing rephrasing and adding or deleting some keywords or experiences to improve the resume match with the job offer.
+        resume_text: {resume_text}
+        job_offer: {job_offer}
+        job_title: {job_title}"""
 )
 feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_changes_prompt, verbose=False)
 
@@ -252,3 +262,6 @@ with st.container(border=True):
         st.write("Feature 3 is not yet implemented")
     elif feature_4:
         st.write("Feature 4 is not yet implemented")
+        
+        
+
