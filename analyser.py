@@ -38,7 +38,7 @@ def extract_text_from_file(file):
 # Configure the Streamlit page
 st.set_page_config("LLM Resume Analyser", page_icon="🚀")  
 st.title("LLM Resume Analyser 🚀")
-st.write("Improve your resume with the power of LLMs")
+st.write("Improve your resume with the help of AI!")
 
 # Initialize session state variables
 if 'unify_api_key' not in st.session_state:
@@ -138,21 +138,18 @@ def match_report(match_answer):
         print("Raw match_answer:", match_answer)
         # Ensure the response contains the expected separator
         if "{" not in match_answer or "}" not in match_answer:
-            raise ValueError("Response does not contain expected JSON format.")
-        
+            raise ValueError("Response from this model does not contain expected JSON format.")
         # Extract JSON part from the match answer
         json_start = match_answer.index("{")
         json_end = match_answer.rindex("}") + 1
         json_part = match_answer[json_start:json_end]
         text_analysis = match_answer[:json_start].strip()
-
         # Convert the JSON part into a dictionary
         try:
             scores_dict = json.loads(json_part)
         except json.JSONDecodeError as e:
             print("JSON Decode Error in json_part:", e)
             raise e
-
         return text_analysis, scores_dict
     
     # Function to create the radar chart
@@ -164,7 +161,7 @@ def match_report(match_answer):
         # Define scores as the list of values in scores_dict
         scores = list(scores_dict.values())
         scores += scores[:1]
-
+        
         fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
         plt.xticks(angles[:-1], labels)
         ax.set_rlabel_position(0)
@@ -176,62 +173,87 @@ def match_report(match_answer):
     
     # Extract the text analysis and scores dictionary
     text_analysis, scores_dict = extract_text_analysis(match_answer)
-
+    
     # Create the radar chart
     fig = create_radar_chart(scores_dict)
-
+    
     match_report = text_analysis, fig, scores_dict
     
-    print (match_report)
     return match_report
 
 
-feature_suggested_changes_prompt = PromptTemplate(
-    input_variables=["resume_text", "job_offer", "job_title"],
-    template="""You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
-        Your task is to review the provided resume against the given job offer description and job title. 
-        Follow the steps below to complete the task:
-            1. Make a list of matching soft skills, matching hard skills, matching qualifications, matching experiences.
-            2. Make a list of keywords in the job offer and in the resume.
-            4. Make a list of the missing keywords in the resume.
-            5. make a list of the missing keywords that are missing but that current resume implies and could be added
-            6. make a list of the missing experiences that are missing but that current resume implies and could be added.
-            3. With the previous lists as context, build a bullet point answer proposing rephrasing and adding or deleting some keywords or experiences to improve the resume match with the job offer.
-        resume_text: {resume_text}
+def suggested_changes_function(resume_text, job_offer, job_title):
+    feature_suggested_changes_prompt = PromptTemplate(
+        input_variables=["resume_text", "job_offer", "job_title"],
+        template="""You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
+            Your task is to review the provided resume against the given job offer description and job title. 
+            Follow the steps below to complete the task:
+                1. Make a list of matching soft skills, matching hard skills, matching qualifications, matching experiences.
+                2. Make a list of keywords in the job offer and in the resume.
+                4. Make a list of the missing keywords in the resume.
+                5. make a list of the missing keywords that are missing but that current resume implies and could be added
+                6. make a list of the missing experiences that are missing but that current resume implies and could be added.
+                7. With the previous lists as context, build a bullet point answer proposing rephrasing and adding or deleting some keywords or experiences to improve the resume match with the job offer.
+            resume_text : {resume_text}
         job_offer: {job_offer}
         job_title: {job_title}"""
-)
-feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_changes_prompt, verbose=False)
+    )
+    feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_changes_prompt, verbose=False)
+    suggested_changes = feature_suggested_changes_chain.run(resume_text=st.session_state.resume_text,
+                                                        job_offer=st.session_state.job_offer_text,
+                                                        job_title=st.session_state.job_title)
+    return suggested_changes
 
 
-st.markdown("### Features")
+def skill_list_function (resume_text):
+    skill_list_prompt = PromptTemplate(
+        input_variables=["resume_text"],
+        template="""Extract the following information from the provided resume_text and format it as a JSON object with the following structure:
+        {{
+        "soft_skills": ["soft_skill1", "soft_skill2", "soft_skill3", "..."],
+        "hard_skills": ["hard_skill1", "hard_skill2", "hard_skill3", "..."],
+        "keywords": ["keyword1", "keyword2", "keyword3", "..."],
+        "experience": ["experience1", "experience2", "experience3", "..."],
+        "education_and_certifications": ["education1", "certification1", "certification2", "..."],
+        "other_knowledge": ["other_knowledge1", "other_knowledge2", "other_knowledge3", "..."]
+        }}
+        resume_text:
+        {resume_text}
+        """
+    )
+    skill_list_chain = LLMChain(llm=model, prompt=skill_list_prompt, verbose=True)
+    skill_list = skill_list_chain.run(resume_text=st.session_state.resume_text)
+    
+    return skill_list
 
-tab1, tab2, tab3 = st.tabs(["Match a job offer", "General Improvements", "Career advice"])
+
+
+tab1, tab2, tab3 = st.tabs(["Resume VS Job offer", "Improve my resume", "Career advice"])
 
 with tab1:
-    feature_match_button = st.button("RESUME MATCH WITH THE JOB OFFER")
-    feature_suggested_changes_button = st.button("HOW TO IMPROVE MY RESUME?")
-
+    col1, col2, col3, col4 = st.columns(4)
+    feature_match_button = col1.button("REPORT MATCH")
+    skills_list_button= col2.button("SKILLS LISTS")
+    scores_button = col3.button("SCORES")
+    feature_suggested_changes_button = col4.button("SUGGESTED_CHANGES")
 with tab2:
-    feature_3 = st.button("FEATURE 3")
-    feature_4 = st.button("FEATURE 4")
-    
+    col1, col2 = st.columns(2)
+    feature_3 = col1.button("FEATURE 3")
+    feature_4 = col2.button("FEATURE 4")
 with tab3:
-    feature_5 = st.button("FEATURE 5")
-    feature_6 = st.button("FEATURE 6")
+    col1, col2 = st.columns(2)
+    feature_5 = col1.button("FEATURE 5")
+    feature_6 = col2.button("FEATURE 6")
     
-
-
 with st.container(border=True):
     if feature_match_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
-            match_answer = feature_match_chain(resume_text=st.session_state.resume_text, 
+            match_answer = feature_match_function(resume_text=st.session_state.resume_text, 
                                                    job_offer=st.session_state.job_offer_text, 
                                                    job_title=st.session_state.job_title
                                                    )
             # Get the match report
-            analysis_text, radar_chart, scores_dict = match_report(match_answer)
-    
+            analysis_text, radar_chart, scores_dict = match_report(match_answer)    
             # Display the results in a container
             with st.container():
                 st.write("### Resume match analysis")
@@ -240,28 +262,41 @@ with st.container(border=True):
                 st.pyplot(radar_chart)
                 st.write("### Scores")
                 st.json(scores_dict)
-                
-        #    except ValueError as e:
-        #        st.error("Something went wrong. Please try again.")  
-        #else:
-        #    st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
-            
-    elif feature_suggested_changes_button:
-        if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
-            try:
-                suggested_changes_answer = feature_suggested_changes_chain.run(resume_text=st.session_state.resume_text, 
-                                                                              job_offer=st.session_state.job_offer_text, 
-                                                                              job_title=st.session_state.job_title)
-                st.markdown("### Suggestions to Improve the Resume")
-                st.write(suggested_changes_answer)
-            except ValueError as e:
-                st.error("Something went wrong. Please try again.")
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
+    
+    elif skills_list_button:
+        if st.session_state.resume_text:
+            skill_list = skill_list_function(resume_text=st.session_state.resume_text)
+            skills_list_text = skill_list.choices[0].text.strip()
+            # Print the extracted data
+            st.markdown("### JSON Output List?")
+            st.write(skill_list)
+        else:
+            st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
+                           
+                       
+    elif feature_suggested_changes_button:
+        if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
+            json_answer = suggested_changes_function(resume_text=st.session_state.resume_text, 
+                                                   job_offer=st.session_state.job_offer_text, 
+                                                   job_title=st.session_state.job_title
+                                                   )
+            st.markdown("### Suggested Changes")
+            st.write(json_answer)
+        else:
+            st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
+            
+            
     elif feature_3:
         st.write("Feature 3 is not yet implemented")
     elif feature_4:
         st.write("Feature 4 is not yet implemented")
+    elif feature_5:
+        st.write("Feature 5 is not yet implemented")
+    elif feature_6:
+        st.write("Feature 6 is not yet implemented")
+        
         
         
 
