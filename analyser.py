@@ -38,7 +38,7 @@ def extract_text_from_file(file):
 # Configure the Streamlit page
 st.set_page_config("LLM Resume Analyser", page_icon="🚀")  
 st.title("LLM Resume Analyser 🚀")
-st.write("Improve your resume with the help of AI!")
+st.write("Try many models to see how they behave with your resume and job offer.")
 
 # Initialize session state variables
 if 'unify_api_key' not in st.session_state:
@@ -53,7 +53,8 @@ if 'job_offer_text' not in st.session_state:
     st.session_state.job_offer_text = ''
 if 'job_title' not in st.session_state:
     st.session_state.job_title = ''
-
+if 'scores' not in st.session_state:
+    st.session_state['scores'] = []
 
 with st.sidebar:
     st.write("Select your favorite LLM model to assist you in enhancing your career prospects.")
@@ -102,23 +103,29 @@ def feature_match_function(resume_text, job_offer, job_title):
         template="""You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
         Your task is to review the provided resume against the given job offer description and job title. 
         Follow the steps below to complete the task:
-        1. Make a bullet point list of matching skills and experiences and missing keywords.
-        2. Score each section as follows:
-            - Soft skills: 3 * (matching soft skill)
-            - Hard skills: 2 * (matching hard skill)
-            - Experience: 4 * (each relevant experience for the role)
-            - Keywords: 20 - 1 * (each missing keyword)
-        3. Calculate a total score at the end in this way:
-            - Total score = (soft_skills_score + hard_skills_score + experience_score + keywords_score)*100/80  
+        1. Make list of:
+            -matching soft skills
+            -matching hard skills 
+            -relevant experiences for the position
+            -matching education and certifications
+            -missing keywords
+        2. Score in a range 0 to 100 each category as follows:
+            - "Soft skills": 15 * (each matching soft skills)
+            - "Hard skills": 10 * (each matching hard skills)
+            - "Experience": 20 * (each relevant experience for the position)
+            - "Education and certifications": 30 * (each matching education or certification)
+            - "Keywords": 100 - 4 * (each missing keyword)
+        3. Calculate the match score as follows:
+            - Total score over 100 = ("Soft skills" + "Hard skills" + "Experience" + "Education and certifications" + "Keywords")/ 5
         4. Generate an analysis summary that includes the following information:
                 - Whether the candidate's profile aligns with the role description in the job offer with mention to the total score.
                 - Highlight the strengths and weaknesses of the applicant in relation to the specified job offer description.
-        5. Provide an output in JSON format (without any title as "JSON Output" or "scores") with the scores previously generated following the template below:
+        5. Provide an output  titled "scores" in JSON format with the scores previously generated following the template below:
                 {{
-                    "soft_skills_score": <soft_skills_score>,
-                    "hard_skills_score": <hard_skills_score>,
-                    "experience_score": <experience_score>,
-                    "keywords_score": <keywords_score>,
+                    "Soft skills": <soft_skills_score>,
+                    "Hard skills": <hard_skills_score>,
+                    "Experience": <experience_score>,
+                    "Keywords": <keywords_score>,
                 }}
         resume_text: {resume_text}
         job_offer: {job_offer}
@@ -138,7 +145,9 @@ def match_report(match_answer):
         print("Raw match_answer:", match_answer)
         # Ensure the response contains the expected separator
         if "{" not in match_answer or "}" not in match_answer:
+            st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
             raise ValueError("Response from this model does not contain expected JSON format.")
+            
         # Extract JSON part from the match answer
         json_start = match_answer.index("{")
         json_end = match_answer.rindex("}") + 1
@@ -148,8 +157,8 @@ def match_report(match_answer):
         try:
             scores_dict = json.loads(json_part)
         except json.JSONDecodeError as e:
-            print("JSON Decode Error in json_part:", e)
-            raise e
+            st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
+            raise ValueError("Response from this model does not contain expected JSON format.")
         return text_analysis, scores_dict
     
     # Function to create the radar chart
@@ -165,10 +174,10 @@ def match_report(match_answer):
         fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
         plt.xticks(angles[:-1], labels)
         ax.set_rlabel_position(0)
-        plt.yticks([5, 10, 15, 20], ["5", "10", "15", "20"], color="grey", size=7)
-        plt.ylim(0, 20)
+        plt.yticks([20, 40, 60, 80, 100], ["20", "40","60", "80", "100"], color="grey", size=7)
+        plt.ylim(0, 100)
         ax.plot(angles, scores, linewidth=2, linestyle='solid')
-        ax.fill(angles, scores, 'b', alpha=0.1)
+        ax.fill(angles, scores, 'r', alpha=0.1)
         return fig
     
     # Extract the text analysis and scores dictionary
@@ -185,18 +194,23 @@ def match_report(match_answer):
 def suggested_changes_function(resume_text, job_offer, job_title):
     feature_suggested_changes_prompt = PromptTemplate(
         input_variables=["resume_text", "job_offer", "job_title"],
-        template="""You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
-            Your task is to review the provided resume against the given job offer description and job title. 
-            Follow the steps below to complete the task:
-                1. Make a list of matching soft skills, matching hard skills, matching qualifications, matching experiences.
-                2. Make a list of keywords in the job offer and in the resume.
-                4. Make a list of the missing keywords in the resume.
-                5. make a list of the missing keywords that are missing but that current resume implies and could be added
-                6. make a list of the missing experiences that are missing but that current resume implies and could be added.
-                7. With the previous lists as context, build a bullet point answer proposing rephrasing and adding or deleting some keywords or experiences to improve the resume match with the job offer.
-            resume_text : {resume_text}
-        job_offer: {job_offer}
-        job_title: {job_title}"""
+        template="""You are an AI assistant designed to enhance and optimize resumes to better match specific job offers. 
+        Your task is to review the provided resume in light of the given job offer description and job title, and provide detailed suggestions for improvement.
+    
+        Follow these steps in order:
+        1. Identify and list matching soft skills, hard skills, qualifications, and experiences between the resume and the job offer.
+        2. Extract and list keywords from both the job offer and the resume.
+        3. Identify missing keywords in the resume that are present in the job offer.
+        4. Highlight keywords implied by the resume that could be explicitly added.
+        5. Identify missing experiences in the resume that are implied and could be explicitly added.
+        6. Based on the previous lists, provide specific bullet-point suggestions for rephrasing, adding, or deleting keywords or experiences to enhance the resume's alignment with the job offer.
+
+        Summarize and output only points 4, 5, and 6.
+
+        Resume Text: {resume_text}
+        Job Offer: {job_offer}
+        Job Title: {job_title}
+        """
     )
     feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_changes_prompt, verbose=False)
     suggested_changes = feature_suggested_changes_chain.run(resume_text=st.session_state.resume_text,
@@ -228,18 +242,19 @@ def skill_list_function (resume_text):
 
 
 
-tab1, tab2, tab3 = st.tabs(["Resume VS Job offer", "Improve my resume", "Career advice"])
+tab1, tab2, tab3 = st.tabs(["Resume VS Job offer", "Get a job", "Career advice"])
 
 with tab1:
     col1, col2, col3, col4 = st.columns(4)
-    feature_match_button = col1.button("REPORT MATCH")
+    feature_match_button = col1.button("RESUME MATCH ANALYSIS")
     skills_list_button= col2.button("SKILLS LISTS")
-    scores_button = col3.button("SCORES")
-    feature_suggested_changes_button = col4.button("SUGGESTED_CHANGES")
+    title_names_button = col3.button("SUGGESTED TITLE NAMES")
+    scores_button = col4.button("SCORES comparison")
+    
 with tab2:
     col1, col2 = st.columns(2)
-    feature_3 = col1.button("FEATURE 3")
-    feature_4 = col2.button("FEATURE 4")
+    feature_suggested_changes_button = col1.button("IMPROVE YOUR RESUME")
+    feature_4 = col2.button("SUGGESTED TITLE NAMES")
 with tab3:
     col1, col2 = st.columns(2)
     feature_5 = col1.button("FEATURE 5")
@@ -253,25 +268,31 @@ with st.container(border=True):
                                                    job_title=st.session_state.job_title
                                                    )
             # Get the match report
-            analysis_text, radar_chart, scores_dict = match_report(match_answer)    
+            analysis_text, radar_chart, scores_dict = match_report(match_answer)
+            
+            st.session_state['scores'].append({'index': len(st.session_state['scores']), 'score': scores_dict,
+                                            'model': str(model_name),  # Convert the model to a string for storage
+                                            'temperature': model_temperature
+                                            }) 
+              
             # Display the results in a container
             with st.container():
                 st.write("### Resume match analysis")
                 st.write(analysis_text)
                 st.write("### Radar Chart")
                 st.pyplot(radar_chart)
-                st.write("### Scores")
-                st.json(scores_dict)
+                # st.write("### Scores")
+                # st.json(scores_dict)
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
     
     elif skills_list_button:
         if st.session_state.resume_text:
             skill_list = skill_list_function(resume_text=st.session_state.resume_text)
-            skills_list_text = skill_list.choices[0].text.strip()
+            skill_list_text = skill_list.strip()
             # Print the extracted data
             st.markdown("### JSON Output List?")
-            st.write(skill_list)
+            st.write(skill_list_text)
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
                            
@@ -288,8 +309,6 @@ with st.container(border=True):
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
             
             
-    elif feature_3:
-        st.write("Feature 3 is not yet implemented")
     elif feature_4:
         st.write("Feature 4 is not yet implemented")
     elif feature_5:
