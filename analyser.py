@@ -54,7 +54,11 @@ if 'job_offer_text' not in st.session_state:
 if 'job_title' not in st.session_state:
     st.session_state.job_title = ''
 if 'scores' not in st.session_state:
-    st.session_state['scores'] = []
+    st.session_state.scores = []
+if 'user_prompt' not in st.session_state:
+    st.session_state.user_prompt = '.'
+
+
 
 with st.sidebar:
     st.write("Select your favorite LLM model to assist you in enhancing your career prospects.")
@@ -140,20 +144,16 @@ def feature_match_function(resume_text, job_offer, job_title):
 
 
 def match_report(match_answer):
+    
     def extract_text_analysis(match_answer):
-        # Debugging: Print the raw response
-        print("Raw match_answer:", match_answer)
-        # Ensure the response contains the expected separator
         if "{" not in match_answer or "}" not in match_answer:
             st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
             raise ValueError("Response from this model does not contain expected JSON format.")
-            
-        # Extract JSON part from the match answer
+        # Extract JSON part from the match answer and convert it to a dictionary
         json_start = match_answer.index("{")
         json_end = match_answer.rindex("}") + 1
         json_part = match_answer[json_start:json_end]
         text_analysis = match_answer[:json_start].strip()
-        # Convert the JSON part into a dictionary
         try:
             scores_dict = json.loads(json_part)
         except json.JSONDecodeError as e:
@@ -161,7 +161,6 @@ def match_report(match_answer):
             raise ValueError("Response from this model does not contain expected JSON format.")
         return text_analysis, scores_dict
     
-    # Function to create the radar chart
     def create_radar_chart(scores_dict):
         labels = list(scores_dict.keys())
         num_vars = len(labels)
@@ -170,7 +169,6 @@ def match_report(match_answer):
         # Define scores as the list of values in scores_dict
         scores = list(scores_dict.values())
         scores += scores[:1]
-        
         fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
         plt.xticks(angles[:-1], labels)
         ax.set_rlabel_position(0)
@@ -179,13 +177,9 @@ def match_report(match_answer):
         ax.plot(angles, scores, linewidth=2, linestyle='solid')
         ax.fill(angles, scores, 'r', alpha=0.1)
         return fig
-    
-    # Extract the text analysis and scores dictionary
+  
     text_analysis, scores_dict = extract_text_analysis(match_answer)
-    
-    # Create the radar chart
     fig = create_radar_chart(scores_dict)
-    
     match_report = text_analysis, fig, scores_dict
     
     return match_report
@@ -201,15 +195,15 @@ def suggested_changes_function(resume_text, job_offer, job_title):
         1. Identify and list matching soft skills, hard skills, qualifications, and experiences between the resume and the job offer.
         2. Extract and list keywords from both the job offer and the resume.
         3. Identify missing keywords in the resume that are present in the job offer.
-        4. Highlight keywords implied by the resume that could be explicitly added.
+        4. Highlight keywords and skills implied by the resume that could be explicitly added.
         5. Identify missing experiences in the resume that are implied and could be explicitly added.
         6. Based on the previous lists, provide specific bullet-point suggestions for rephrasing, adding, or deleting keywords or experiences to enhance the resume's alignment with the job offer.
 
         Summarize and output only points 4, 5, and 6.
 
-        Resume Text: {resume_text}
-        Job Offer: {job_offer}
-        Job Title: {job_title}
+        resume_text: {resume_text}
+        job_offer: {job_offer}
+        job_title: {job_title}
         """
     )
     feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_changes_prompt, verbose=False)
@@ -235,10 +229,75 @@ def skill_list_function (resume_text):
         {resume_text}
         """
     )
-    skill_list_chain = LLMChain(llm=model, prompt=skill_list_prompt, verbose=True)
+    skill_list_chain = LLMChain(llm=model, prompt=skill_list_prompt, verbose=False)
     skill_list = skill_list_chain.run(resume_text=st.session_state.resume_text)
     
     return skill_list
+
+
+def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
+    custom_prompt = PromptTemplate(
+        input_variables=[ "user_prompt","resume_text", "job_offer", "job_title"],
+        template="""You are an AI assistant designed to enhance and optimize resumes to better match specific job offers.
+        Given the user prompt and with the resume, job offer, and job title as context provide a short answer that addresses the user's query.
+        user_prompt: {user_prompt}
+        resume_text: {resume_text}
+        job_offer: {job_offer}
+        job_title: {job_title}
+        """
+    )
+    custom_prompt_chain = LLMChain(llm=model, prompt=custom_prompt, verbose=False)
+    custom_QA = custom_prompt_chain.run(user_prompt=st.session_state.user_prompt,
+                                        resume_text=st.session_state.resume_text,
+                                        job_offer=st.session_state.job_offer_text,
+                                        job_title=st.session_state.job_title,
+                                            
+                                        )
+    return custom_QA
+
+
+# Function to create a radar chart
+def create_radar_chart(data):
+    # Define categories for radar chart
+    categories = ["Soft skills", "Hard skills", "Experience", "Education and certifications", "Keywords"]
+    num_vars = len(categories)
+    
+    # Define angles for radar chart
+    angles = [n / float(num_vars) * 2 * pi for n in range(num_vars)]
+    angles += angles[:1]
+    
+    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+
+    # Colors for different models
+    colors = plt.get_cmap("tab10", len(data))
+    
+    for idx, entry in enumerate(data):
+        scores_dict = entry["score"]
+        model = entry["model"]
+
+        # Extract the relevant scores for radar chart
+        scores = [
+            scores_dict.get("soft_skills_score") or scores_dict.get("Soft skills", 0),
+            scores_dict.get("hard_skills_score") or scores_dict.get("Hard skills", 0),
+            scores_dict.get("experience_score") or scores_dict.get("Experience", 0),
+            scores_dict.get("Education and certifications", 0),  # Some entries may not have this score
+            scores_dict.get("keywords_score") or scores_dict.get("Keywords", 0)
+        ]
+        scores += scores[:1]
+
+        ax.plot(angles, scores, linewidth=2, linestyle='solid', label=model, color=colors(idx))
+        ax.fill(angles, scores, color=colors(idx), alpha=0.25)
+    
+    plt.xticks(angles[:-1], categories)
+    ax.set_rlabel_position(0)
+    plt.yticks([20, 40, 60, 80, 100], ["20", "40", "60", "80", "100"], color="grey", size=7)
+    plt.ylim(0, 100)
+
+    plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
+    plt.title('Model Scores Radar Chart')
+    plt.show()
+
+
 
 
 
@@ -248,9 +307,8 @@ with tab1:
     col1, col2, col3, col4 = st.columns(4)
     feature_match_button = col1.button("RESUME MATCH ANALYSIS")
     skills_list_button= col2.button("SKILLS LISTS")
-    title_names_button = col3.button("SUGGESTED TITLE NAMES")
-    scores_button = col4.button("SCORES comparison")
-    
+    Scores_button = col3.button("SESSION SCORES")
+    custom_prompt_button = col4.button("CUSTOM PROMPT")   
 with tab2:
     col1, col2 = st.columns(2)
     feature_suggested_changes_button = col1.button("IMPROVE YOUR RESUME")
@@ -270,7 +328,7 @@ with st.container(border=True):
             # Get the match report
             analysis_text, radar_chart, scores_dict = match_report(match_answer)
             
-            st.session_state['scores'].append({'index': len(st.session_state['scores']), 'score': scores_dict,
+            st.session_state.scores.append({'index': len(st.session_state.scores), 'score': scores_dict,
                                             'model': str(model_name),  # Convert the model to a string for storage
                                             'temperature': model_temperature
                                             }) 
@@ -295,8 +353,7 @@ with st.container(border=True):
             st.write(skill_list_text)
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
-                           
-                       
+                                                  
     elif feature_suggested_changes_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
             json_answer = suggested_changes_function(resume_text=st.session_state.resume_text, 
@@ -308,9 +365,34 @@ with st.container(border=True):
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
             
-            
-    elif feature_4:
-        st.write("Feature 4 is not yet implemented")
+    elif custom_prompt_button:
+        user_prompt = st.text_input("User Prompt",placeholder="Enter your prompt here", type="default", key="user_prompt")
+        submit_button = st.button("Submit")
+
+        if submit_button:
+            st.session_state.user_prompt = user_prompt
+            if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
+                answer = custom_prompt_function(user_prompt=st.session_state.user_prompt,
+                                        resume_text=st.session_state.resume_text, 
+                                        job_offer=st.session_state.job_offer_text, 
+                                        job_title=st.session_state.job_title
+                                        )
+                answer_text = answer.strip()
+                with st.container():
+                    st.markdown("### Custom Prompt Answer")
+                    st.write(answer_text)       
+            else:
+                st.warning("Please upload a resume and provide a job offer text and job title to proceed.") 
+                   
+    elif Scores_button:
+        # Call the function to create the radar chart
+        st.write("### Model Scores Radar Chart")
+        model_names = [entry['model'] for entry in st.session_state.scores]
+        num_queries = len(st.session_state.scores)
+        st.write(f"In your session, you have conducted {num_queries} queries to these models: {model_names}")
+        create_radar_chart(st.session_state.scores)
+        st.pyplot(plt)
+        
     elif feature_5:
         st.write("Feature 5 is not yet implemented")
     elif feature_6:
