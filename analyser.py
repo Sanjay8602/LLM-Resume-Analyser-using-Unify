@@ -234,6 +234,27 @@ def skill_list_function (resume_text):
     
     return skill_list
 
+def requirements_list_function (job_offer):
+    requirements_list_prompt = PromptTemplate(
+        input_variables=["job_offer"],
+        template="""Extract the following information from the provided job offer and format it as a JSON object with the following structure:
+        {{
+        "soft_skills_desired": ["soft_skill1", "soft_skill2", "soft_skill3", "..."],
+        "hard_skills_required": ["hard_skill1", "hard_skill2", "hard_skill3", "..."],
+        "keywords": ["keyword1", "keyword2", "keyword3", "..."],
+        "experience_required": ["experience1", "experience2", "experience3", "..."],
+        "education_and_certifications_required": ["education1", "certification1", "certification2", "..."],
+        "other_knowledge_desired": ["other_knowledge1", "other_knowledge2", "other_knowledge3", "..."]
+        }}
+        job_offer:
+        {job_offer}
+        """
+    )
+    requirements_list_chain = LLMChain(llm=model, prompt=requirements_list_prompt, verbose=False)
+    requirements_list = requirements_list_chain.run(job_offer=st.session_state.job_offer_text)
+    
+    return requirements_list
+
 
 def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
     custom_prompt = PromptTemplate(
@@ -348,9 +369,15 @@ with st.container(border=True):
         if st.session_state.resume_text:
             skill_list = skill_list_function(resume_text=st.session_state.resume_text)
             skill_list_text = skill_list.strip()
+            
+            requirements_list = requirements_list_function(job_offer=st.session_state.job_offer_text)
+            requirements_list_text = requirements_list.strip()
+            
             # Print the extracted data
             st.markdown("### JSON Output List?")
             st.write(skill_list_text)
+            st.write(requirements_list_text)
+                     
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
                                                   
