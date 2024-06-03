@@ -320,7 +320,7 @@ def create_radar_chart(data):
 
 
 
-tab1, tab2, tab3 = st.tabs(["Resume VS Job offer", "Get a job", "Career advice"])
+tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer", "Get a job", "Career advice", "custom prompt"])
 
 with tab1:
     col1, col2, col3 = st.columns(3)
@@ -332,9 +332,14 @@ with tab2:
     feature_suggested_changes_button = col1.button("FINETUNE YOUR RESUME")
     feature_5 = col2.button("TITLE NAMES FOR JOB SEARCH")
 with tab3:
-    col1, col2 = st.columns(2)
-    feature_6 = col1.button("CARREER ADVICE")
-    custom_prompt_button = col2.button("CUSTOM PROMPT")  
+    col1, col2, col3 = st.columns(3)
+    feature_6 = col1.button("SHORT TERM")
+    custom_prompt_button = col2.button("MID TERM")
+    feature_7 = col3.button("LONG TERM") 
+
+with tab4:
+    user_prompt = st.text_input("User Prompt",placeholder="Enter your prompt here", type="default", key="user_prompt")
+    submit_user_prompt_button = st.button("Submit")
     
 with st.container(border=True):
     if feature_match_button:
@@ -389,24 +394,20 @@ with st.container(border=True):
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
             
-    elif custom_prompt_button:
-        user_prompt = st.text_input("User Prompt",placeholder="Enter your prompt here", type="default", key="user_prompt")
-        submit_button = st.button("Submit")
-
-        if submit_button:
-            st.session_state.user_prompt = user_prompt
-            if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
-                answer = custom_prompt_function(user_prompt=st.session_state.user_prompt,
+    elif submit_user_prompt_button:
+        st.session_state.user_prompt = user_prompt
+        if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
+            answer = custom_prompt_function(user_prompt=st.session_state.user_prompt,
                                         resume_text=st.session_state.resume_text, 
                                         job_offer=st.session_state.job_offer_text, 
                                         job_title=st.session_state.job_title
                                         )
-                answer_text = answer.strip()
-                with st.container():
-                    st.markdown("### Custom Prompt Answer")
-                    st.write(answer_text)       
-            else:
-                st.warning("Please upload a resume and provide a job offer text and job title to proceed.") 
+            answer_text = answer.strip()
+            with st.container():
+                st.markdown("### Custom Prompt Answer")
+                st.write(answer_text)       
+        else:
+            st.warning("Please upload a resume and provide a job offer text and job title to proceed.") 
                    
     elif Scores_button:
         # Call the function to create the radar chart
