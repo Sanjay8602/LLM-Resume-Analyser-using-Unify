@@ -225,49 +225,105 @@ def suggested_changes_function(resume_text, job_offer, job_title):
                                                         job_title=st.session_state.job_title)
     return suggested_changes
 
+def skills_heatmap_function(resume_text, job_offer):
+    # Load pre-trained Sentence-BERT model
+    model_encoder = SentenceTransformer('all-MiniLM-L6-v2')
+    
+    def skill_list_function (resume_text):
+        skill_list_prompt = PromptTemplate(
+            input_variables=["resume_text"],
+            template="""Extract the following information from the provided resume_text and format it as a JSON object with the following structure:
+            {{
+            "soft_skills": ["soft_skill1", "soft_skill2", "soft_skill3", "..."],
+            "hard_skills": ["hard_skill1", "hard_skill2", "hard_skill3", "..."],
+            "keywords": ["keyword1", "keyword2", "keyword3", "..."],
+            "experience": ["experience1", "experience2", "experience3", "..."],
+            "education_and_certifications": ["education1", "certification1", "certification2", "..."],
+            "other_knowledge": ["other_knowledge1", "other_knowledge2", "other_knowledge3", "..."]
+            }}
+            resume_text:
+            {resume_text}
+            """
+        )
+        skill_list_chain = LLMChain(llm=model, prompt=skill_list_prompt, verbose=False)
+        skill_list = skill_list_chain.run(resume_text=st.session_state.resume_text)
+        # Parse JSON string to dictionary
+        json_start1 = skill_list.index("{")
+        json_end1 = skill_list.rindex("}") + 1
+        json_part1 = skill_list[json_start1:json_end1]
+        skill_dict = json.loads(json_part1)
+        # Check if the output is a dictionary
+        if not isinstance(skill_dict, dict):
+            st.warning("No skills found. Try again or try another model.")
+        return skill_dict
 
-def skill_list_function (resume_text):
-    skill_list_prompt = PromptTemplate(
-        input_variables=["resume_text"],
-        template="""Extract the following information from the provided resume_text and format it as a JSON object with the following structure:
-        {{
-        "soft_skills": ["soft_skill1", "soft_skill2", "soft_skill3", "..."],
-        "hard_skills": ["hard_skill1", "hard_skill2", "hard_skill3", "..."],
-        "keywords": ["keyword1", "keyword2", "keyword3", "..."],
-        "experience": ["experience1", "experience2", "experience3", "..."],
-        "education_and_certifications": ["education1", "certification1", "certification2", "..."],
-        "other_knowledge": ["other_knowledge1", "other_knowledge2", "other_knowledge3", "..."]
-        }}
-        resume_text:
-        {resume_text}
-        """
-    )
-    skill_list_chain = LLMChain(llm=model, prompt=skill_list_prompt, verbose=False)
-    skill_list = skill_list_chain.run(resume_text=st.session_state.resume_text)
+    def requirements_list_function (job_offer):
+        requirements_list_prompt = PromptTemplate(
+            input_variables=["job_offer"],
+            template="""Extract the information referring to skills, experience, studies or other relevant keywords from the provided job offer and format it as a JSON object with the following structure:
+            {{
+            "requirements": ["keyword1", "keyword2", "keyword3", "..."],
+            }}
+            job_offer:
+            {job_offer}
+            """
+        )
+        requirements_list_chain = LLMChain(llm=model, prompt=requirements_list_prompt, verbose=False)
+        requirements_list = requirements_list_chain.run(job_offer=st.session_state.job_offer_text)
+        # Parse JSON string to dictionary
+        json_start2 = requirements_list.index("{")
+        json_end2 = requirements_list.rindex("}") + 1
+        json_part2 = requirements_list[json_start2:json_end2]
+        requirements_dict = json.loads(json_part2)
+        # Check if the output is a dictionary
+        if not isinstance(requirements_dict, dict):
+            st.warning("Output is not a dictionary. Try again or try another model.")
+        return requirements_dict
     
-    # Parse JSON string to dictionary
-    skill_dict = json.loads(skill_list_json)
+    skill_dict = skill_list_function(resume_text=st.session_state.resume_text)
+    requirements_dict = requirements_list_function(job_offer=st.session_state.job_offer_text)  
+    categories = list(skill_dict.keys())
+    requirements = requirements_dict["requirements"]
     
-    return skill_dict
+    # Combine all categories into one list
+    all_skills = []
+    for category in skill_dict:
+        all_skills.extend(skill_dict[category])
 
-def requirements_list_function (job_offer):
-    requirements_list_prompt = PromptTemplate(
-        input_variables=["job_offer"],
-        template="""Extract the information referring to skills, experience, studies or other relevant keywords from the provided job offer and format it as a JSON object with the following structure:
-        {{
-        "requirements": ["keyword1", "keyword2", "keyword3", "..."],
-        }}
-        job_offer:
-        {job_offer}
-        """
-    )
-    requirements_list_chain = LLMChain(llm=model, prompt=requirements_list_prompt, verbose=False)
-    requirements_list = requirements_list_chain.run(job_offer=st.session_state.job_offer_text)
+    st.write(f"Total skills collected: {len(all_skills)} .Processing the similarity matrix...")
     
-    # Parse JSON string to dictionary
-    requirements_dict = json.loads(requirements_list_json)
+    # Define similarity function using Sentence-BERT
+    def evaluate_similarity(sentence1, sentence2):
+        embeddings1 = model_encoder.encode(sentence1, convert_to_tensor=True)
+        embeddings2 = model_encoder.encode(sentence2, convert_to_tensor=True)
+        similarity = util.pytorch_cos_sim(embeddings1, embeddings2)
+        return similarity.item()
+
+    # Create similarity matrix
+    def create_similarity_matrix(skill_list, requirement_list):
+        matrix = np.zeros((len(skill_list), len(requirement_list)))
+        
+        for i, skill in enumerate(skill_list):
+            for j, req in enumerate(requirement_list):
+                matrix[i, j] = evaluate_similarity(skill, req)
+        
+        return matrix
     
-    return requirements_dict
+    similarity_matrix = create_similarity_matrix(all_skills, requirements)
+
+    # Plot heatmap
+    def plot_heatmap(matrix, skill_list, requirement_list):
+        df = pd.DataFrame(matrix, index=skill_list, columns=requirement_list)
+        plt.figure(figsize=(20, 15))
+        sns.heatmap(df, annot=False, cmap='coolwarm', cbar=True, linewidths=.2)
+        plt.title('Similarity Heatmap for All Skills Against Requirements')
+        plt.xlabel('Requirements')
+        plt.ylabel('Skills')
+        plt.xticks(rotation=90)
+        plt.yticks(rotation=0)
+        plt.show()
+
+    plot_heatmap(similarity_matrix, all_skills, requirements)
 
 def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
     custom_user_prompt = PromptTemplate(
@@ -289,6 +345,7 @@ def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
                                         )
     return custom_QA
 
+    
 
 # Function to create a radar chart
 def create_radar_chart(data):
@@ -381,17 +438,11 @@ with st.container(border=True):
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
     
     elif skills_list_button:
-        if st.session_state.resume_text:
-            skill_list = skill_list_function(resume_text=st.session_state.resume_text)
-            skill_list_text = skill_list.strip()
-            
-            requirements_list = requirements_list_function(job_offer=st.session_state.job_offer_text)
-            requirements_list_text = requirements_list.strip()
-            
-            # Print the extracted data.
-            st.markdown("### JSON Output List?")
-            st.write(skill_list_text)
-            st.write(requirements_list_text)
+        if st.session_state.resume_text and st.session_state.job_offer_text:
+            st.write("### Semantic similarity between resume skills and job offer requirements")
+            skills_heatmap_function(resume_text=st.session_state.resume_text, 
+                                    job_offer=st.session_state.job_offer_text)
+            st.pyplot(plt)
                      
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
