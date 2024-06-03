@@ -95,13 +95,11 @@ with st.sidebar:
     st.session_state.job_title = st.text_input("Job title*", key="Job_title", placeholder="enter here your desired job title")
     
     
-    
 model = ChatUnify(
         model=st.session_state.endpoint,
         unify_api_key=st.session_state.unify_api_key,
         temperature=model_temperature
         )
-
 
 
 def feature_match_function(resume_text, job_offer, job_title):
@@ -157,7 +155,6 @@ def feature_match_function(resume_text, job_offer, job_title):
 
 
 def match_report(match_answer):
-    
     def extract_text_analysis(match_answer):
         if "{" not in match_answer or "}" not in match_answer:
             st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
@@ -193,8 +190,7 @@ def match_report(match_answer):
   
     text_analysis, scores_dict = extract_text_analysis(match_answer)
     fig = create_radar_chart(scores_dict)
-    match_report = text_analysis, fig, scores_dict
-    
+    match_report = text_analysis, fig, scores_dict 
     return match_report
 
 
@@ -225,6 +221,7 @@ def suggested_changes_function(resume_text, job_offer, job_title):
                                                         job_title=st.session_state.job_title)
     return suggested_changes
 
+
 def skills_heatmap_function(resume_text, job_offer):
     # Load pre-trained Sentence-BERT model
     model_encoder = SentenceTransformer('all-MiniLM-L6-v2')
@@ -232,7 +229,16 @@ def skills_heatmap_function(resume_text, job_offer):
     def skill_list_function (resume_text):
         skill_list_prompt = PromptTemplate(
             input_variables=["resume_text"],
-            template="""Extract the following information from the provided resume_text and format it as a JSON object with the following structure:
+            template="""
+            First extract the following information from the provided resume_text:
+                1. Soft skills
+                2. Hard skills
+                3. General keywords in the resume
+                4. keywords in professional experiences
+                5. keywords in education and certifications
+                6. other relevant knowledge keywords
+            
+            With the information extracted from the resume_text provide the output in JSON format using the template below:
             {{
             "soft_skills": ["soft_skill1", "soft_skill2", "soft_skill3", "..."],
             "hard_skills": ["hard_skill1", "hard_skill2", "hard_skill3", "..."],
@@ -260,7 +266,10 @@ def skills_heatmap_function(resume_text, job_offer):
     def requirements_list_function (job_offer):
         requirements_list_prompt = PromptTemplate(
             input_variables=["job_offer"],
-            template="""Extract from the provided job offer the keywords referring to skills, experience required, studies or other relevant information and format it as a JSON object with the following structure:
+            template="""First extract the following information from the provided job_offer:
+                1. "requirements": All the keywords that refers to requirements, skills, experiences or other qualities needed for the job offer.
+            
+            Provide the output in JSON format using the template below:
             {{
             "requirements": ["keyword1", "keyword2", "keyword3", "..."],
             }}
@@ -298,19 +307,19 @@ def skills_heatmap_function(resume_text, job_offer):
         embeddings2 = model_encoder.encode(sentence2, convert_to_tensor=True)
         similarity = util.pytorch_cos_sim(embeddings1, embeddings2)
         return similarity.item()
-
     # Create similarity matrix
     def create_similarity_matrix(skill_list, requirement_list):
-        matrix = np.zeros((len(skill_list), len(requirement_list)))
-        
-        for i, skill in enumerate(skill_list):
-            for j, req in enumerate(requirement_list):
-                matrix[i, j] = evaluate_similarity(skill, req)
-        
-        return matrix
+        try:
+            matrix = np.zeros((len(skill_list), len(requirement_list)))
+            for i, skill in enumerate(skill_list):
+                for j, req in enumerate(requirement_list):
+                    matrix[i, j] = evaluate_similarity(skill, req)
+            return matrix
+        except Exception as e:
+            st.warning("It didn't work this time, try it again! Take in consideration that small models sometimes struggle when it comes to give a formatted answer.")      
     
     similarity_matrix = create_similarity_matrix(all_skills, requirements)
-
+    
     # Plot heatmap
     def plot_heatmap(matrix, skill_list, requirement_list):
         df = pd.DataFrame(matrix, index=skill_list, columns=requirement_list)
@@ -322,8 +331,8 @@ def skills_heatmap_function(resume_text, job_offer):
         plt.xticks(rotation=90)
         plt.yticks(rotation=0)
         plt.show()
-
     plot_heatmap(similarity_matrix, all_skills, requirements)
+
 
 def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
     custom_user_prompt = PromptTemplate(
@@ -344,7 +353,6 @@ def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
                                             
                                         )
     return custom_QA
-
     
 
 # Function to create a radar chart
@@ -389,9 +397,8 @@ def create_radar_chart(data):
     plt.show()
 
 
-
+# UI main structure
 tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer", "Get a job", "Career advice", "custom prompt"])
-
 
 with tab1:
     col1, col2, col3 = st.columns(3)
@@ -399,18 +406,20 @@ with tab1:
     Scores_button = col2.button("SESSION SCORES")
     semantic_heatmap_button= col3.button("SEMANTIC HEATMAP")
     container1 = st.container(border=True)
+    
 with tab2:
     col1, col2 = st.columns(2)
     feature_suggested_changes_button = col1.button("TUNE YOUR RESUME")
     feature_5 = col2.button("TITLE NAMES FOR JOB SEARCH")
     container2 = st.container(border=True)
+    
 with tab3:
     col1, col2, col3 = st.columns(3)
     feature_6 = col1.button("SHORT TERM")
-    custom_prompt_button = col2.button("MID TERM")
-    feature_7 = col3.button("LONG TERM") 
+    feature_7 = col2.button("MID TERM")
+    feature_8 = col2.button("LONG TERM") 
     container3 = st.container(border=True)
-
+    
 with tab4:
     st.session_state.user_prompt = st.text_area("Try your prompt",placeholder="Enter your prompt here")
     submit_user_prompt_button = st.button("Submit")
@@ -471,13 +480,17 @@ with container2:
             st.markdown("### Suggested Changes")
             suggested_changes_answer_text = suggested_changes_answer.strip() 
             st.write(suggested_changes_answer_text)
-            feature_8 = st.button("APPLY CHANGES AND REPEAT ANALYSIS")
-            if feature_8:
+            feature_9 = st.button("APPLY CHANGES AND REPEAT ANALYSIS")
+            if feature_9:
                 st.warning("Feature 8 is not yet implemented")
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
+    elif feature_5:
+        st.write("Feature 5 is not yet implemented")
+        
 with container3: 
-    st.write("Career advice feature is not yet implemented")      
+    if feature_6 or feature_7 or feature_8:
+            st.warning("Career advice feature is not yet implemented") 
 with container4:           
     if submit_user_prompt_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
@@ -494,11 +507,6 @@ with container4:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.") 
                    
     
-        
-    elif feature_5:
-        st.write("Feature 5 is not yet implemented")
-    elif feature_6:
-        st.write("Feature 6 is not yet implemented")
         
         
         
