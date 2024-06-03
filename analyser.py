@@ -260,7 +260,7 @@ def skills_heatmap_function(resume_text, job_offer):
     def requirements_list_function (job_offer):
         requirements_list_prompt = PromptTemplate(
             input_variables=["job_offer"],
-            template="""Extract the information referring to skills, experience, studies or other relevant keywords from the provided job offer and format it as a JSON object with the following structure:
+            template="""Extract from the provided job offer the keywords referring to skills, experience required, studies or other relevant information and format it as a JSON object with the following structure:
             {{
             "requirements": ["keyword1", "keyword2", "keyword3", "..."],
             }}
@@ -440,7 +440,7 @@ with st.container(border=True):
     elif skills_list_button:
         if st.session_state.resume_text and st.session_state.job_offer_text:
             st.write("### Semantic Heatmap")
-            st.write("The heatmap represents the semantic similarity matrix between the skills and experiences from the resume and the skills and job offer requirements.")
+            st.write("The heatmap represents the semantic similarity matrix between the skills and experiences from the resume and the skills and job offer requirements. (processing time: 1min aprox.)")
             skills_heatmap_function(resume_text=st.session_state.resume_text, 
                                     job_offer=st.session_state.job_offer_text)
             st.pyplot(plt)
