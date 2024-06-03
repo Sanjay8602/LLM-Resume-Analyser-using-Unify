@@ -257,17 +257,17 @@ def requirements_list_function (job_offer):
     return requirements_dict
 
 def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
-    custom_prompt = PromptTemplate(
+    custom_user_prompt = PromptTemplate(
         input_variables=[ "user_prompt","resume_text", "job_offer", "job_title"],
         template="""You are an AI assistant designed to enhance and optimize resumes to better match specific job offers.
-        Given the user prompt and with the resume, job offer, and job title as context provide a short answer that addresses the user's query.
+        Given the user prompt as a query to answer and use the resume, job offer, and job title as context to provide a short answer that addresses the user's query.
         user_prompt: {user_prompt}
         resume_text: {resume_text}
         job_offer: {job_offer}
         job_title: {job_title}
         """
     )
-    custom_prompt_chain = LLMChain(llm=model, prompt=custom_prompt, verbose=False)
+    custom_prompt_chain = LLMChain(llm=model, prompt=custom_user_prompt, verbose=False)
     custom_QA = custom_prompt_chain.run(user_prompt=st.session_state.user_prompt,
                                         resume_text=st.session_state.resume_text,
                                         job_offer=st.session_state.job_offer_text,
@@ -338,7 +338,7 @@ with tab3:
     feature_7 = col3.button("LONG TERM") 
 
 with tab4:
-    user_prompt = st.text_input("User Prompt",placeholder="Enter your prompt here", type="default", key="user_prompt")
+    st.session_state.user_prompt = st.text_input("User Prompt",placeholder="Enter your prompt here", type="default")
     submit_user_prompt_button = st.button("Submit")
     
 with st.container(border=True):
@@ -375,7 +375,7 @@ with st.container(border=True):
             requirements_list = requirements_list_function(job_offer=st.session_state.job_offer_text)
             requirements_list_text = requirements_list.strip()
             
-            # Print the extracted data
+            # Print the extracted data.
             st.markdown("### JSON Output List?")
             st.write(skill_list_text)
             st.write(requirements_list_text)
@@ -395,13 +395,12 @@ with st.container(border=True):
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
             
     elif submit_user_prompt_button:
-        st.session_state.user_prompt = user_prompt
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
             answer = custom_prompt_function(user_prompt=st.session_state.user_prompt,
-                                        resume_text=st.session_state.resume_text, 
-                                        job_offer=st.session_state.job_offer_text, 
-                                        job_title=st.session_state.job_title
-                                        )
+                                            resume_text=st.session_state.resume_text, 
+                                            job_offer=st.session_state.job_offer_text, 
+                                            job_title=st.session_state.job_title
+                                            )
             answer_text = answer.strip()
             with st.container():
                 st.markdown("### Custom Prompt Answer")
