@@ -290,7 +290,7 @@ def skills_heatmap_function(resume_text, job_offer):
     for category in skill_dict:
         all_skills.extend(skill_dict[category])
 
-    st.write(f"Total skills collected: {len(all_skills)} .Processing the similarity matrix...")
+    st.write(f"Total skills collected: {len(all_skills)}")
     
     # Define similarity function using Sentence-BERT
     def evaluate_similarity(sentence1, sentence2):
@@ -439,7 +439,8 @@ with st.container(border=True):
     
     elif skills_list_button:
         if st.session_state.resume_text and st.session_state.job_offer_text:
-            st.write("### Semantic similarity between resume skills and job offer requirements")
+            st.write("### Semantic Heatmap")
+            st.write("The heatmap represents the semantic similarity matrix between the skills and experiences from the resume and the skills and job offer requirements.")
             skills_heatmap_function(resume_text=st.session_state.resume_text, 
                                     job_offer=st.session_state.job_offer_text)
             st.pyplot(plt)
