@@ -1,4 +1,7 @@
 numpy
+pandas
+seaborn
+sentence-transformers
 matplotlib
 streamlit>=1.34.0
 PyPDF2
