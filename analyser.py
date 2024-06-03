@@ -392,26 +392,31 @@ def create_radar_chart(data):
 
 tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer", "Get a job", "Career advice", "custom prompt"])
 
+
 with tab1:
     col1, col2, col3 = st.columns(3)
     feature_match_button = col1.button("RESUME MATCH")
     Scores_button = col2.button("SESSION SCORES")
-    skills_list_button= col3.button("SEMANTIC HEATMAP")
+    semantic_heatmap_button= col3.button("SEMANTIC HEATMAP")
+    container1 = st.container(border=True)
 with tab2:
     col1, col2 = st.columns(2)
     feature_suggested_changes_button = col1.button("TUNE YOUR RESUME")
     feature_5 = col2.button("TITLE NAMES FOR JOB SEARCH")
+    container2 = st.container(border=True)
 with tab3:
     col1, col2, col3 = st.columns(3)
     feature_6 = col1.button("SHORT TERM")
     custom_prompt_button = col2.button("MID TERM")
     feature_7 = col3.button("LONG TERM") 
+    container3 = st.container(border=True)
 
 with tab4:
-    st.session_state.user_prompt = st.text_input("User Prompt",placeholder="Enter your prompt here", type="default")
+    st.session_state.user_prompt = st.text_area("Try your prompt",placeholder="Enter your prompt here")
     submit_user_prompt_button = st.button("Submit")
+    container4 = st.container(border=True)
     
-with st.container(border=True):
+with container1:
     if feature_match_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
             match_answer = feature_match_function(resume_text=st.session_state.resume_text, 
@@ -436,19 +441,28 @@ with st.container(border=True):
                 # st.json(scores_dict)
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
-    
-    elif skills_list_button:
+            
+    elif Scores_button:
+        # Call the function to create the radar chart
+        st.write("### Model Scores Radar Chart")
+        model_names = [entry['model'] for entry in st.session_state.scores]
+        num_queries = len(st.session_state.scores)
+        st.write(f"In your session, you have conducted {num_queries} queries to these models: {model_names}")
+        create_radar_chart(st.session_state.scores)
+        st.pyplot(plt)
+        
+    elif semantic_heatmap_button:
         if st.session_state.resume_text and st.session_state.job_offer_text:
             st.write("### Semantic Heatmap")
-            st.write("The heatmap represents the semantic similarity matrix between the skills and experiences from the resume and the skills and job offer requirements. (processing time: 1min aprox.)")
+            st.write("The heatmap represents the semantic similarity matrix between the skills and experiences from the resume and the job offer requirements. (processing time: 1min aprox.)")
             skills_heatmap_function(resume_text=st.session_state.resume_text, 
                                     job_offer=st.session_state.job_offer_text)
             st.pyplot(plt)
                      
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
-                                                  
-    elif feature_suggested_changes_button:
+with container2:                                                  
+    if feature_suggested_changes_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
             suggested_changes_answer = suggested_changes_function(resume_text=st.session_state.resume_text, 
                                                    job_offer=st.session_state.job_offer_text, 
@@ -462,8 +476,10 @@ with st.container(border=True):
                 st.warning("Feature 8 is not yet implemented")
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
-            
-    elif submit_user_prompt_button:
+with container3: 
+    st.write("Career advice feature is not yet implemented")      
+with container4:           
+    if submit_user_prompt_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
             answer = custom_prompt_function(user_prompt=st.session_state.user_prompt,
                                             resume_text=st.session_state.resume_text, 
@@ -477,14 +493,7 @@ with st.container(border=True):
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.") 
                    
-    elif Scores_button:
-        # Call the function to create the radar chart
-        st.write("### Model Scores Radar Chart")
-        model_names = [entry['model'] for entry in st.session_state.scores]
-        num_queries = len(st.session_state.scores)
-        st.write(f"In your session, you have conducted {num_queries} queries to these models: {model_names}")
-        create_radar_chart(st.session_state.scores)
-        st.pyplot(plt)
+    
         
     elif feature_5:
         st.write("Feature 5 is not yet implemented")
