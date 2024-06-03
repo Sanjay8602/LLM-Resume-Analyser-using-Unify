@@ -133,7 +133,7 @@ def feature_match_function(resume_text, job_offer, job_title):
             - Highlight the strengths and weaknesses of the applicant in relation to the specified job offer description.
 
         Provide the output in two parts:
-        1. **Analysis Summary**: A summary of the results from steps 1, 2, 3, and 4.
+        1. **Analysis Summary**: A summary of the results from steps 1 and 4.
         2. **Scores**: A JSON format with the scores for each category using the template below:
             {{
             "Soft skills": <soft_skills_score>,
