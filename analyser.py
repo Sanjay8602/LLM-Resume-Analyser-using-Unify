@@ -232,19 +232,17 @@ def skill_list_function (resume_text):
     skill_list_chain = LLMChain(llm=model, prompt=skill_list_prompt, verbose=False)
     skill_list = skill_list_chain.run(resume_text=st.session_state.resume_text)
     
-    return skill_list
+    # Parse JSON string to dictionary
+    skill_dict = json.loads(skill_list_json)
+    
+    return skill_dict
 
 def requirements_list_function (job_offer):
     requirements_list_prompt = PromptTemplate(
         input_variables=["job_offer"],
-        template="""Extract the following information from the provided job offer and format it as a JSON object with the following structure:
+        template="""Extract the information referring to skills, experience, studies or other relevant keywords from the provided job offer and format it as a JSON object with the following structure:
         {{
-        "soft_skills_desired": ["soft_skill1", "soft_skill2", "soft_skill3", "..."],
-        "hard_skills_required": ["hard_skill1", "hard_skill2", "hard_skill3", "..."],
-        "keywords": ["keyword1", "keyword2", "keyword3", "..."],
-        "experience_required": ["experience1", "experience2", "experience3", "..."],
-        "education_and_certifications_required": ["education1", "certification1", "certification2", "..."],
-        "other_knowledge_desired": ["other_knowledge1", "other_knowledge2", "other_knowledge3", "..."]
+        "requirements": ["keyword1", "keyword2", "keyword3", "..."],
         }}
         job_offer:
         {job_offer}
@@ -253,8 +251,10 @@ def requirements_list_function (job_offer):
     requirements_list_chain = LLMChain(llm=model, prompt=requirements_list_prompt, verbose=False)
     requirements_list = requirements_list_chain.run(job_offer=st.session_state.job_offer_text)
     
-    return requirements_list
-
+    # Parse JSON string to dictionary
+    requirements_dict = json.loads(requirements_list_json)
+    
+    return requirements_dict
 
 def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
     custom_prompt = PromptTemplate(
@@ -320,24 +320,21 @@ def create_radar_chart(data):
 
 
 
-
-
 tab1, tab2, tab3 = st.tabs(["Resume VS Job offer", "Get a job", "Career advice"])
 
 with tab1:
-    col1, col2, col3, col4 = st.columns(4)
-    feature_match_button = col1.button("RESUME MATCH ANALYSIS")
-    skills_list_button= col2.button("SKILLS LISTS")
-    Scores_button = col3.button("SESSION SCORES")
-    custom_prompt_button = col4.button("CUSTOM PROMPT")   
+    col1, col2, col3 = st.columns(3)
+    feature_match_button = col1.button("RESUME MATCH")
+    Scores_button = col2.button("SESSION SCORES")
+    skills_list_button= col3.button("SEMANTIC HEATMAP")
 with tab2:
     col1, col2 = st.columns(2)
-    feature_suggested_changes_button = col1.button("IMPROVE YOUR RESUME")
-    feature_4 = col2.button("SUGGESTED TITLE NAMES")
+    feature_suggested_changes_button = col1.button("FINETUNE YOUR RESUME")
+    feature_5 = col2.button("TITLE NAMES FOR JOB SEARCH")
 with tab3:
     col1, col2 = st.columns(2)
-    feature_5 = col1.button("FEATURE 5")
-    feature_6 = col2.button("FEATURE 6")
+    feature_6 = col1.button("CARREER ADVICE")
+    custom_prompt_button = col2.button("CUSTOM PROMPT")  
     
 with st.container(border=True):
     if feature_match_button:
