@@ -104,37 +104,47 @@ model = ChatUnify(
 def feature_match_function(resume_text, job_offer, job_title):
     feature_match_prompt = PromptTemplate(
         input_variables=["resume_text", "job_offer", "job_title"],
-        template="""You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
+        template = """You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
         Your task is to review the provided resume against the given job offer description and job title. 
-        Follow the steps below to complete the task:
-        1. Make list of:
-            -matching soft skills
-            -matching hard skills 
-            -relevant experiences for the position
-            -matching education and certifications
-            -missing keywords
-        2. Score in a range 0 to 100 each category as follows:
-            - "Soft skills": 15 * (each matching soft skills)
-            - "Hard skills": 10 * (each matching hard skills)
-            - "Experience": 20 * (each relevant experience for the position)
-            - "Education and certifications": 30 * (each matching education or certification)
-            - "Keywords": 100 - 4 * (each missing keyword)
-        3. Calculate the match score as follows:
-            - Total score over 100 = ("Soft skills" + "Hard skills" + "Experience" + "Education and certifications" + "Keywords")/ 5
+        Follow the steps below in order to complete the task:
+
+        1. Make a list of:
+            - Matching soft skills
+            - Matching hard skills
+            - Relevant experiences for the position
+            - Matching education and certifications
+            - Missing keywords
+
+        2. Score each category on a scale from 0 to 100 as follows:
+            - "Soft skills": 15 points for each matching soft skill.
+            - "Hard skills": 10 points for each matching hard skill.
+            - "Experience": 20 points for each relevant experience for the position.
+            - "Education and certifications": 30 points for each matching education or certification.
+            - "Keywords": 100 minus 4 points for each missing keyword.
+
+        3. Calculate the total match score by averaging the scores from each category:
+            - Total score out of 100 = (Soft skills + Hard skills + Experience + Education and certifications + Keywords) / 5.
+
         4. Generate an analysis summary that includes the following information:
-                - Whether the candidate's profile aligns with the role description in the job offer with mention to the total score.
-                - Highlight the strengths and weaknesses of the applicant in relation to the specified job offer description.
-        5. Provide an output  titled "scores" in JSON format with the scores previously generated following the template below:
-                {{
-                    "Soft skills": <soft_skills_score>,
-                    "Hard skills": <hard_skills_score>,
-                    "Experience": <experience_score>,
-                    "Keywords": <keywords_score>,
-                }}
-        resume_text: {resume_text}
-        job_offer: {job_offer}
-        job_title: {job_title}"""
-    )
+            - Whether the candidate's profile aligns with the role description in the job offer, including the total score.
+            - Highlight the strengths and weaknesses of the applicant in relation to the specified job offer description.
+
+        Provide the output in two parts:
+        1. **Analysis Summary**: A summary of the results from steps 1, 2, 3, and 4.
+        2. **Scores**: A JSON format with the scores for each category using the template below:
+            {{
+            "Soft skills": <soft_skills_score>,
+            "Hard skills": <hard_skills_score>,
+            "Experience": <experience_score>,
+            "Education and certifications": <education_and_certifications_score>,
+            "Keywords": <keywords_score>
+            }}
+            
+        Resume Text: {resume_text}
+        Job Offer: {job_offer}
+        Job Title: {job_title}
+        """
+        )
     feature_match_chain = LLMChain(llm=model, prompt=feature_match_prompt, verbose=False)
     match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
                                                    job_offer=st.session_state.job_offer_text, 
@@ -199,7 +209,7 @@ def suggested_changes_function(resume_text, job_offer, job_title):
         5. Identify missing experiences in the resume that are implied and could be explicitly added.
         6. Based on the previous lists, provide specific bullet-point suggestions for rephrasing, adding, or deleting keywords or experiences to enhance the resume's alignment with the job offer.
 
-        Summarize and output only points 4, 5, and 6.
+        Summarize and output only points 4, 5, and 6(rename them as A, B and C).
 
         resume_text: {resume_text}
         job_offer: {job_offer}
