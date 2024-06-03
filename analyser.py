@@ -1,4 +1,6 @@
 import numpy as np
+import seaborn as sns
+import pandas as pd
 import matplotlib.pyplot as plt
 from math import pi
 import json
@@ -9,6 +11,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from data.unify_endpoints_data import model_provider, dynamic_provider
 from langchain_unify.chat_models import ChatUnify
+from sentence_transformers import SentenceTransformer, util
 
 
 # Function to extract text from a PDF or DOCX document
@@ -339,7 +342,7 @@ with tab1:
     skills_list_button= col3.button("SEMANTIC HEATMAP")
 with tab2:
     col1, col2 = st.columns(2)
-    feature_suggested_changes_button = col1.button("FINETUNE YOUR RESUME")
+    feature_suggested_changes_button = col1.button("TUNE YOUR RESUME")
     feature_5 = col2.button("TITLE NAMES FOR JOB SEARCH")
 with tab3:
     col1, col2, col3 = st.columns(3)
@@ -395,12 +398,16 @@ with st.container(border=True):
                                                   
     elif feature_suggested_changes_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
-            json_answer = suggested_changes_function(resume_text=st.session_state.resume_text, 
+            suggested_changes_answer = suggested_changes_function(resume_text=st.session_state.resume_text, 
                                                    job_offer=st.session_state.job_offer_text, 
                                                    job_title=st.session_state.job_title
                                                    )
             st.markdown("### Suggested Changes")
-            st.write(json_answer)
+            suggested_changes_answer_text = suggested_changes_answer.strip() 
+            st.write(suggested_changes_answer_text)
+            feature_8 = st.button("APPLY CHANGES AND REPEAT ANALYSIS")
+            if feature_8:
+                st.warning("Feature 8 is not yet implemented")
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
             
