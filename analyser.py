@@ -190,91 +190,6 @@ def match_report(match_answer):
     return match_report
 
 
-def feature_many_scores_function(resume_text, job_offer, job_title):
-    feature_match_prompt = PromptTemplate(
-        input_variables=["resume_text", "job_offer"],
-        template = """You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
-        Your task is to review the provided resume against the given job offer description and job title. 
-        Follow the steps below in order to complete the task:
-
-        step 1. Score from 1 to 10 each category as follows:
-            - Soft skills score: 
-            - Matching hard skills
-            - Relevant experiences for the position
-            - Matching education and certifications
-            - Missing keywords
-
-        step 2. Score each category as follows:
-            - "Soft skills": 15 points for each matching soft skill (minimum 0 points, maximum 100 points).
-            - "Hard skills": 10 points for each matching hard skill(minimum 0 points, maximum 100 points).
-            - "Experience": 20 points for each relevant experience for the position(minimum 0 points, maximum 100 points).
-            - "Education and certifications": 30 points for each matching education or certification(minimum 0 points, maximum 100 points).
-            - "Keywords": 100 minus 4 points for each missing keyword (minimum 0 points, maximum 100 points).
-
-
-        step 3. Provide the output in two parts:
-        1. **Analysis Summary**: An analysis summary of how the candidate's profile aligns with the role description in the job offer, including a reference to the scores, highlighting the strengths and weaknesses of the applicant in relation to the specified job offer description..
-        2. **Scores**: A JSON format with the scores for each category using the template below:
-            {{
-            "Soft skills": <soft_skills_score>,
-            "Hard skills": <hard_skills_score>,
-            "Experience": <experience_score>,
-            "Education and certifications": <education_and_certifications_score>,
-            "Keywords": <keywords_score>
-            }}
-            
-        Resume Text: {resume_text}
-        Job Offer: {job_offer}
-        Job Title: {job_title}
-        """
-        )
-    with st.sidebar.container(border=True):
-        st.text(f"Running prompt: {feature_match_prompt.template}")
-    feature_match_chain = LLMChain(llm=model, prompt=feature_match_prompt, verbose=False)
-    match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
-                                                   job_offer=st.session_state.job_offer_text, 
-                                                   job_title=st.session_state.job_title)
-    return match_answer
-
-
-def many_match_report(match_answer):
-    def extract_text_analysis(match_answer):
-        if "{" not in match_answer or "}" not in match_answer:
-            st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
-        # Extract JSON part from the match answer and convert it to a dictionary
-        json_start = match_answer.index("{")
-        json_end = match_answer.rindex("}") + 1
-        json_part = match_answer[json_start:json_end]
-        text_analysis = match_answer[:json_start].strip()
-        try:
-            scores_dict = json.loads(json_part)
-        except json.JSONDecodeError as e:
-            st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
-        return text_analysis, scores_dict
-    
-    def create_radar_chart(scores_dict):
-        labels = list(scores_dict.keys())
-        num_vars = len(labels)
-        angles = [n / float(num_vars) * 2 * pi for n in range(num_vars)]
-        angles += angles[:1]
-        # Define scores as the list of values in scores_dict
-        scores = list(scores_dict.values())
-        scores += scores[:1]
-        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-        plt.xticks(angles[:-1], labels)
-        ax.set_rlabel_position(0)
-        plt.yticks([20, 40, 60, 80, 100], ["20", "40","60", "80", "100"], color="grey", size=7)
-        plt.ylim(0, 100)
-        ax.plot(angles, scores, linewidth=2, linestyle='solid')
-        ax.fill(angles, scores, 'r', alpha=0.1)
-        return fig
-  
-    text_analysis, scores_dict = extract_text_analysis(match_answer)
-    fig = create_radar_chart(scores_dict)
-    match_report = text_analysis, fig, scores_dict 
-    return match_report
-
-
 def suggested_changes_function(resume_text, job_offer, job_title):
     feature_suggested_changes_prompt = PromptTemplate(
         input_variables=["resume_text", "job_offer", "job_title"],
@@ -632,6 +547,7 @@ with container2:
             st.write(suggested_changes_answer_text)
             feature_9 = st.button("APPLY CHANGES AND REPEAT ANALYSIS")
             if feature_9:
+                
                 st.warning("Feature 8 is not yet implemented")
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
