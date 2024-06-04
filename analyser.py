@@ -97,7 +97,7 @@ with st.sidebar:
         
         st.session_state.job_title = st.text_input("Job title*", key="Job_title", placeholder="enter here your desired job title")
     
-    
+# Unify model initialization     
 model = ChatUnify(
         model=st.session_state.endpoint,
         unify_api_key=st.session_state.unify_api_key,
@@ -412,6 +412,7 @@ def create_radar_chart(data):
     for idx, entry in enumerate(data):
         scores_dict = entry["score"]
         model = entry["model"]
+        temperature = entry["temperature"] 
         scores = [
             scores_dict.get("soft_skills_score") or scores_dict.get("Soft skills", 0),
             scores_dict.get("hard_skills_score") or scores_dict.get("Hard skills", 0),
@@ -421,16 +422,15 @@ def create_radar_chart(data):
         ]
         scores += scores[:1]
 
-        ax.plot(angles, scores, linewidth=2, linestyle='solid', label=model, color=colors(idx))
+        ax.plot(angles, scores, linewidth=2, linestyle='solid', label=f"{model} ({temperature})", color=colors(idx))
         ax.fill(angles, scores, color=colors(idx), alpha=0.25)
     
     plt.xticks(angles[:-1], categories)
-    ax.set_rlabel_position(0)
+    ax.set_rlabel_position(5)
     plt.yticks([20, 40, 60, 80, 100], ["20", "40", "60", "80", "100"], color="grey", size=7)
     plt.ylim(0, 100)
-
     plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
-    plt.title('Model Scores Radar Chart')
+    # plt.title('Model Scores Radar Chart')
     plt.show()
 
 
@@ -486,17 +486,26 @@ with container1:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
             
     elif Scores_button:
-        st.write("### Model Scores Radar Chart")
+        st.write("### Scores by the models used in this session")
         # Radar chart for all models used in the session
         model_names = [entry['model'] for entry in st.session_state.scores]
         num_queries = len(st.session_state.scores)
+        st.write("####### For better understanding of this feature is recommended to try the 'Resume Match' feature with different models and temperatures.")
         st.write(f"In your session, you have conducted {num_queries} queries to these models: {model_names}")
+        st.write("")
+        st.write("")
+        
+        st.write("##### Radar Chart of Scores by Model and Temperature")
+        st.write("The radar chart below is an intuitive way to compare the scores of different models and temperatures.")
         create_radar_chart(st.session_state.scores)
         st.pyplot(plt)
         
         st.write("")  # Add an empty line as a spacer
-        st.write("")  # Add an empty line as a spacer 
-        st.write("")  # Add an empty line as a spacer
+        st.write("")  
+        st.write("")  
+        st.write("##### Grouped Bar Chart of Scores by Category for Different Models and Temperatures")
+        st.write("This chart shows grouped bars by category and colored by model and temperature. Even the distance between different model outputs some patterns are visible.")
+        st.write("")
         
         df = pd.DataFrame(st.session_state.scores)
         # Normalize the score JSON data
@@ -510,13 +519,13 @@ with container1:
 
         # Grouped bar chart where bars are grouped by category and colored by model + temperature
         plt.figure(figsize=(12, 8))
-        sns.barplot(data=melted_df, x='Category', y='Score', hue='Label', palette='Set3')
+        sns.barplot(data=melted_df, x='Category', y='Score', hue='Label', palette='Set2')
 
-        # plt.xlabel('Category')
-        # plt.ylabel('Score')
+        plt.xlabel('')
+        plt.ylabel('')
         # plt.title('Scores by Category for Different Models and Temperatures')
-        plt.legend(title='Model (Temperature)')
-        plt.xticks(rotation=45, ha='right')
+        plt.legend(loc='upper right', title='Model (Temperature)')
+        plt.xticks(rotation=90, ha='right')
         plt.tight_layout()
         sns.despine()  
         st.pyplot(plt)
