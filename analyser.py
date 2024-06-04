@@ -2,6 +2,7 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from math import pi
 import json
 from PyPDF2 import PdfReader
@@ -148,11 +149,95 @@ def feature_match_function(resume_text, job_offer, job_title):
     match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
                                                    job_offer=st.session_state.job_offer_text, 
                                                    job_title=st.session_state.job_title)
-    print(match_answer) 
     return match_answer
 
 
 def match_report(match_answer):
+    def extract_text_analysis(match_answer):
+        if "{" not in match_answer or "}" not in match_answer:
+            st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
+        # Extract JSON part from the match answer and convert it to a dictionary
+        json_start = match_answer.index("{")
+        json_end = match_answer.rindex("}") + 1
+        json_part = match_answer[json_start:json_end]
+        text_analysis = match_answer[:json_start].strip()
+        try:
+            scores_dict = json.loads(json_part)
+        except json.JSONDecodeError as e:
+            st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
+        return text_analysis, scores_dict
+    
+    def create_radar_chart(scores_dict):
+        labels = list(scores_dict.keys())
+        num_vars = len(labels)
+        angles = [n / float(num_vars) * 2 * pi for n in range(num_vars)]
+        angles += angles[:1]
+        # Define scores as the list of values in scores_dict
+        scores = list(scores_dict.values())
+        scores += scores[:1]
+        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+        plt.xticks(angles[:-1], labels)
+        ax.set_rlabel_position(0)
+        plt.yticks([20, 40, 60, 80, 100], ["20", "40","60", "80", "100"], color="grey", size=7)
+        plt.ylim(0, 100)
+        ax.plot(angles, scores, linewidth=2, linestyle='solid')
+        ax.fill(angles, scores, 'r', alpha=0.1)
+        return fig
+  
+    text_analysis, scores_dict = extract_text_analysis(match_answer)
+    fig = create_radar_chart(scores_dict)
+    match_report = text_analysis, fig, scores_dict 
+    return match_report
+
+
+def feature_many_scores_function(resume_text, job_offer, job_title):
+    feature_match_prompt = PromptTemplate(
+        input_variables=["resume_text", "job_offer"],
+        template = """You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
+        Your task is to review the provided resume against the given job offer description and job title. 
+        Follow the steps below in order to complete the task:
+
+        step 1. Score from 1 to 10 each category as follows:
+            - Soft skills score: 
+            - Matching hard skills
+            - Relevant experiences for the position
+            - Matching education and certifications
+            - Missing keywords
+
+        step 2. Score each category as follows:
+            - "Soft skills": 15 points for each matching soft skill (minimum 0 points, maximum 100 points).
+            - "Hard skills": 10 points for each matching hard skill(minimum 0 points, maximum 100 points).
+            - "Experience": 20 points for each relevant experience for the position(minimum 0 points, maximum 100 points).
+            - "Education and certifications": 30 points for each matching education or certification(minimum 0 points, maximum 100 points).
+            - "Keywords": 100 minus 4 points for each missing keyword (minimum 0 points, maximum 100 points).
+
+
+        step 3. Provide the output in two parts:
+        1. **Analysis Summary**: An analysis summary of how the candidate's profile aligns with the role description in the job offer, including a reference to the scores, highlighting the strengths and weaknesses of the applicant in relation to the specified job offer description..
+        2. **Scores**: A JSON format with the scores for each category using the template below:
+            {{
+            "Soft skills": <soft_skills_score>,
+            "Hard skills": <hard_skills_score>,
+            "Experience": <experience_score>,
+            "Education and certifications": <education_and_certifications_score>,
+            "Keywords": <keywords_score>
+            }}
+            
+        Resume Text: {resume_text}
+        Job Offer: {job_offer}
+        Job Title: {job_title}
+        """
+        )
+    with st.sidebar.container(border=True):
+        st.text(f"Running prompt: {feature_match_prompt.template}")
+    feature_match_chain = LLMChain(llm=model, prompt=feature_match_prompt, verbose=False)
+    match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
+                                                   job_offer=st.session_state.job_offer_text, 
+                                                   job_title=st.session_state.job_title)
+    return match_answer
+
+
+def many_match_report(match_answer):
     def extract_text_analysis(match_answer):
         if "{" not in match_answer or "}" not in match_answer:
             st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
@@ -295,15 +380,13 @@ def skills_heatmap_function(resume_text, job_offer):
     requirements_dict = requirements_list_function(job_offer=st.session_state.job_offer_text)  
     categories = list(skill_dict.keys())
     requirements = requirements_dict["requirements"]
-    
     # Combine all categories into one list
     all_skills = []
     for category in skill_dict:
         all_skills.extend(skill_dict[category])
 
     st.write(f"Total skills collected: {len(all_skills)}")
-    
-    # Define similarity function using Sentence-BERT
+    # Define similarity function using BERT
     def evaluate_similarity(sentence1, sentence2):
         embeddings1 = model_encoder.encode(sentence1, convert_to_tensor=True)
         embeddings2 = model_encoder.encode(sentence2, convert_to_tensor=True)
@@ -323,19 +406,41 @@ def skills_heatmap_function(resume_text, job_offer):
     similarity_matrix = create_similarity_matrix(all_skills, requirements)
     
     # Plot heatmap
+    st.write("##### Semantic Heatmap")
     def plot_heatmap(matrix, skill_list, requirement_list):
         df = pd.DataFrame(matrix, index=skill_list, columns=requirement_list)
+        df = df.loc[:, df.sum().sort_values(ascending=False).index]  # Sort columns by their sum
+        df = df.T   # Transpose the dataframe for better visualization
         plt.figure(figsize=(20, 15))
         sns.heatmap(df, annot=False, cmap='viridis', cbar=True, linewidths=.2)
-        plt.title('Similarity Heatmap for All Skills Against Requirements')
-        plt.xlabel('Requirements')
-        plt.ylabel('Skills')
+        # plt.title('Similarity Heatmap for All Skills Against Requirements')
+        #plt.xlabel('Requirements')
+        #plt.ylabel('Skills')
         plt.xticks(rotation=90)
         plt.yticks(rotation=0)
-        plt.show()
+        st.pyplot(plt)
     plot_heatmap(similarity_matrix, all_skills, requirements)
+    
+    # Plot barplot
+    st.write("##### Requirements distributed score")
+    def plot_sum_bar(matrix, requirement_list):
+        sum_values = np.sum(matrix, axis=0)
+        df_sum = pd.DataFrame(sum_values, index=requirement_list, columns=['Sum'])
+        df_sum = df_sum.sort_values(by='Sum', ascending=True)
+        # Normalize the sum_values for colormap mapping
+        norm = mcolors.Normalize(vmin=df_sum['Sum'].min(), vmax=df_sum['Sum'].max())
+        colors = [plt.cm.viridis(norm(value)) for value in df_sum['Sum']]
 
-
+        plt.figure(figsize=(20, 15))
+        plt.barh(df_sum.index, df_sum['Sum'], color=colors)
+        #plt.xlabel('Distributed score by sum of similarities')
+        #plt.ylabel('Requirements')
+        plt.xticks(rotation=0)  # Rotate x-axis labels by 90 degrees
+        plt.box(False)  # Remove the frame
+        st.pyplot(plt)
+    plot_sum_bar(similarity_matrix, requirements)
+        
+    
 def job_titles_list_function (resume_text, num_job_offers):
     job_titles_prompt = PromptTemplate(
         input_variables=["resume_text", "num_job_offers"],
@@ -358,6 +463,7 @@ def job_titles_list_function (resume_text, num_job_offers):
                                         )
     return job_titles  
 
+
 def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
     custom_user_prompt = PromptTemplate(
         input_variables=[ "user_prompt","resume_text", "job_offer", "job_title"],
@@ -379,26 +485,18 @@ def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
     return custom_QA
     
 
-# Function to create a radar chart
 def create_radar_chart(data):
-    # Define categories for radar chart
     categories = ["Soft skills", "Hard skills", "Experience", "Education and certifications", "Keywords"]
     num_vars = len(categories)
     
-    # Define angles for radar chart
     angles = [n / float(num_vars) * 2 * pi for n in range(num_vars)]
     angles += angles[:1]
-    
     fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
-
-    # Colors for different models
     colors = plt.get_cmap("tab10", len(data))
     
     for idx, entry in enumerate(data):
         scores_dict = entry["score"]
         model = entry["model"]
-
-        # Extract the relevant scores for radar chart
         scores = [
             scores_dict.get("soft_skills_score") or scores_dict.get("Soft skills", 0),
             scores_dict.get("hard_skills_score") or scores_dict.get("Hard skills", 0),
@@ -428,7 +526,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     feature_match_button = col1.button("RESUME MATCH")
     Scores_button = col2.button("SESSION SCORES")
-    semantic_heatmap_button= col3.button("SEMANTIC HEATMAP")
+    semantic_visualizations_button= col3.button("SEMANTIC VISUALIZATIONS")
     container1 = st.container(border=True)
     
 with tab2:
@@ -457,44 +555,70 @@ with container1:
                                                    job_offer=st.session_state.job_offer_text, 
                                                    job_title=st.session_state.job_title
                                                    )
-            # Get the match report
             analysis_text, radar_chart, scores_dict = match_report(match_answer)
-            
-            st.session_state.scores.append({'index': len(st.session_state.scores), 'score': scores_dict,
+            st.session_state.scores.append({'score': scores_dict,
                                             'model': str(model_name),  # Convert the model to a string for storage
                                             'temperature': model_temperature
                                             }) 
               
-            # Display the results in a container
             with st.container():
                 st.write("### Resume match analysis")
                 st.write(analysis_text)
                 st.write("### Radar Chart")
                 st.pyplot(radar_chart)
-                # st.write("### Scores")
-                # st.json(scores_dict)
+                
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
             
     elif Scores_button:
-        # Call the function to create the radar chart
         st.write("### Model Scores Radar Chart")
+        # Radar chart for all models used in the session
         model_names = [entry['model'] for entry in st.session_state.scores]
         num_queries = len(st.session_state.scores)
         st.write(f"In your session, you have conducted {num_queries} queries to these models: {model_names}")
         create_radar_chart(st.session_state.scores)
         st.pyplot(plt)
         
-    elif semantic_heatmap_button:
+        st.write("")  # Add an empty line as a spacer
+        st.write("")  # Add an empty line as a spacer 
+        st.write("")  # Add an empty line as a spacer
+        
+        df = pd.DataFrame(st.session_state.scores)
+        # Normalize the score JSON data
+        scores_df = pd.json_normalize(df['score'])
+        scores_df['model'] = df['model']
+        scores_df['temperature'] = df['temperature']
+
+        # Prepare the data for plotting
+        melted_df = scores_df.melt(id_vars=['model', 'temperature'], var_name='Category', value_name='Score')
+        melted_df['Label'] = melted_df['model'] + " (" + melted_df['temperature'].astype(str) + ")"
+
+        # Grouped bar chart where bars are grouped by category and colored by model + temperature
+        plt.figure(figsize=(12, 8))
+        sns.barplot(data=melted_df, x='Category', y='Score', hue='Label', palette='Set3')
+
+        # plt.xlabel('Category')
+        # plt.ylabel('Score')
+        # plt.title('Scores by Category for Different Models and Temperatures')
+        plt.legend(title='Model (Temperature)')
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        sns.despine()  
+        st.pyplot(plt)
+
+        
+    elif semantic_visualizations_button:
         if st.session_state.resume_text and st.session_state.job_offer_text:
-            st.write("### Semantic Heatmap")
-            st.write("The heatmap represents the semantic similarity matrix between the skills and experiences from the resume and the job offer requirements. (processing time: 1 to 2 minutes aprox.)")
+            st.write("### Visualizations based on the semantic similarity matrix")
+            st.write("""The heatmap represents the semantic similarity matrix between the skills and experiences  from the resume and the job offer requirements. 
+                     The barplot represents the sum of similarities distributed across the job offer keywords 
+                     (processing time: 1 to 2 minutes aprox.)""")
             skills_heatmap_function(resume_text=st.session_state.resume_text, 
                                     job_offer=st.session_state.job_offer_text)
-            st.pyplot(plt)
                      
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
+            
 with container2:                                                  
     if feature_suggested_changes_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
@@ -524,12 +648,12 @@ with container2:
                                                                     )
             st.markdown("### Suggested Job Titles")
             suggested_job_titles_text= suggested_job_titles_answer.strip()
-            st.write(suggested_job_titles_text)
-        
+            st.write(suggested_job_titles_text)       
         
 with container3: 
     if feature_6 or feature_7 or feature_8:
             st.warning("Career advice feature is not yet implemented") 
+            
 with container4:           
     if submit_user_prompt_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
