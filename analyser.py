@@ -60,7 +60,8 @@ if 'scores' not in st.session_state:
     st.session_state.scores = []
 if 'user_prompt' not in st.session_state:
     st.session_state.user_prompt = '.'
-
+if "num_job_offers_input" not in st.session_state:
+    st.session_state.num_job_offers_input = 5
 
 
 with st.sidebar:
@@ -81,18 +82,19 @@ with st.sidebar:
         model_temperature = st.slider("Temperature", min_value=0.1, max_value=1.0, value=0.3, step=0.1)   
     st.session_state.endpoint = f"{model_name}@{provider_name}"
     
-    st.session_state.resume_doc = st.file_uploader(label="Upload your Resume*", type=("pdf","docx"), accept_multiple_files=False)
+    with st.expander("Resume and job offer inputs"):
+        st.session_state.resume_doc = st.file_uploader(label="Upload your Resume*", type=("pdf","docx"), accept_multiple_files=False)
 
-    if st.session_state.resume_doc is not None and st.button("Process resume"): 
-        try:
-            st.session_state.resume_text = extract_text_from_file(st.session_state.resume_doc)
-            st.success("Resume has been successfully processed!")
-        except Exception as e:
-            st.error("Unable to recognize the document. Please try a compatible format.")
+        if st.session_state.resume_doc is not None and st.button("Process resume"): 
+            try:
+                st.session_state.resume_text = extract_text_from_file(st.session_state.resume_doc)
+                st.success("Resume has been successfully processed!")
+            except Exception as e:
+                st.error("Unable to recognize the document. Please try a compatible format.")
 
-    st.session_state.job_offer_text = st.text_area(label="Job offer description*", key="Job_offer", placeholder="Paste here the job offer description")
-    
-    st.session_state.job_title = st.text_input("Job title*", key="Job_title", placeholder="enter here your desired job title")
+        st.session_state.job_offer_text = st.text_area(label="Job offer description*", key="Job_offer", placeholder="Paste here the job offer description")
+        
+        st.session_state.job_title = st.text_input("Job title*", key="Job_title", placeholder="enter here your desired job title")
     
     
 model = ChatUnify(
@@ -109,29 +111,23 @@ def feature_match_function(resume_text, job_offer, job_title):
         Your task is to review the provided resume against the given job offer description and job title. 
         Follow the steps below in order to complete the task:
 
-        1. Make a list of:
+        step 1. Make a list of:
             - Matching soft skills
             - Matching hard skills
             - Relevant experiences for the position
             - Matching education and certifications
             - Missing keywords
 
-        2. Score each category on a scale from 0 to 100 as follows:
-            - "Soft skills": 15 points for each matching soft skill.
-            - "Hard skills": 10 points for each matching hard skill.
-            - "Experience": 20 points for each relevant experience for the position.
-            - "Education and certifications": 30 points for each matching education or certification.
-            - "Keywords": 100 minus 4 points for each missing keyword.
+        step 2. Score each category as follows:
+            - "Soft skills": 15 points for each matching soft skill (minimum 0 points, maximum 100 points).
+            - "Hard skills": 10 points for each matching hard skill(minimum 0 points, maximum 100 points).
+            - "Experience": 20 points for each relevant experience for the position(minimum 0 points, maximum 100 points).
+            - "Education and certifications": 30 points for each matching education or certification(minimum 0 points, maximum 100 points).
+            - "Keywords": 100 minus 4 points for each missing keyword (minimum 0 points, maximum 100 points).
 
-        3. Calculate the total match score by averaging the scores from each category:
-            - Total score out of 100 = (Soft skills + Hard skills + Experience + Education and certifications + Keywords) / 5.
 
-        4. Generate an analysis summary that includes the following information:
-            - Whether the candidate's profile aligns with the role description in the job offer, including the total score.
-            - Highlight the strengths and weaknesses of the applicant in relation to the specified job offer description.
-
-        Provide the output in two parts:
-        1. **Analysis Summary**: A summary of the results from steps 1 and 4.
+        step 3. Provide the output in two parts:
+        1. **Analysis Summary**: An analysis summary of how the candidate's profile aligns with the role description in the job offer, including a reference to the scores, highlighting the strengths and weaknesses of the applicant in relation to the specified job offer description..
         2. **Scores**: A JSON format with the scores for each category using the template below:
             {{
             "Soft skills": <soft_skills_score>,
@@ -146,6 +142,8 @@ def feature_match_function(resume_text, job_offer, job_title):
         Job Title: {job_title}
         """
         )
+    with st.sidebar.container(border=True):
+        st.text(f"Running prompt: {feature_match_prompt.template}")
     feature_match_chain = LLMChain(llm=model, prompt=feature_match_prompt, verbose=False)
     match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
                                                    job_offer=st.session_state.job_offer_text, 
@@ -158,7 +156,6 @@ def match_report(match_answer):
     def extract_text_analysis(match_answer):
         if "{" not in match_answer or "}" not in match_answer:
             st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
-            raise ValueError("Response from this model does not contain expected JSON format.")
         # Extract JSON part from the match answer and convert it to a dictionary
         json_start = match_answer.index("{")
         json_end = match_answer.rindex("}") + 1
@@ -168,7 +165,6 @@ def match_report(match_answer):
             scores_dict = json.loads(json_part)
         except json.JSONDecodeError as e:
             st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
-            raise ValueError("Response from this model does not contain expected JSON format.")
         return text_analysis, scores_dict
     
     def create_radar_chart(scores_dict):
@@ -215,6 +211,8 @@ def suggested_changes_function(resume_text, job_offer, job_title):
         job_title: {job_title}
         """
     )
+    with st.sidebar.container(border=True):
+        st.text(f"Running prompt: {feature_suggested_changes_prompt.template}")
     feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_changes_prompt, verbose=False)
     suggested_changes = feature_suggested_changes_chain.run(resume_text=st.session_state.resume_text,
                                                         job_offer=st.session_state.job_offer_text,
@@ -231,12 +229,12 @@ def skills_heatmap_function(resume_text, job_offer):
             input_variables=["resume_text"],
             template="""
             First extract the following information from the provided resume_text:
-                1. Soft skills
-                2. Hard skills
-                3. General keywords in the resume
-                4. keywords in professional experiences
-                5. keywords in education and certifications
-                6. other relevant knowledge keywords
+                1. Soft skills list
+                2. Hard skills list
+                3. General keywords in the resume list
+                4. keywords in professional experiences list
+                5. keywords in education and certifications list
+                6. other relevant knowledge keywords list
             
             With the information extracted from the resume_text provide the output in JSON format using the template below:
             {{
@@ -251,6 +249,8 @@ def skills_heatmap_function(resume_text, job_offer):
             {resume_text}
             """
         )
+        with st.sidebar.container(border=True):
+            st.text(f"Running prompt: {skill_list_prompt.template}")
         skill_list_chain = LLMChain(llm=model, prompt=skill_list_prompt, verbose=False)
         skill_list = skill_list_chain.run(resume_text=st.session_state.resume_text)
         # Parse JSON string to dictionary
@@ -266,7 +266,7 @@ def skills_heatmap_function(resume_text, job_offer):
     def requirements_list_function (job_offer):
         requirements_list_prompt = PromptTemplate(
             input_variables=["job_offer"],
-            template="""First extract the following information from the provided job_offer:
+            template="""First extract the following information from the provided job_offer and make a list:
                 1. "requirements": All the keywords that refers to requirements, skills, experiences or other qualities needed for the job offer.
             
             Provide the output in JSON format using the template below:
@@ -277,6 +277,8 @@ def skills_heatmap_function(resume_text, job_offer):
             {job_offer}
             """
         )
+        with st.sidebar.container(border=True):
+            st.text(f"Running prompt: {requirements_list_prompt.template}")
         requirements_list_chain = LLMChain(llm=model, prompt=requirements_list_prompt, verbose=False)
         requirements_list = requirements_list_chain.run(job_offer=st.session_state.job_offer_text)
         # Parse JSON string to dictionary
@@ -324,7 +326,7 @@ def skills_heatmap_function(resume_text, job_offer):
     def plot_heatmap(matrix, skill_list, requirement_list):
         df = pd.DataFrame(matrix, index=skill_list, columns=requirement_list)
         plt.figure(figsize=(20, 15))
-        sns.heatmap(df, annot=False, cmap='coolwarm', cbar=True, linewidths=.2)
+        sns.heatmap(df, annot=False, cmap='viridis', cbar=True, linewidths=.2)
         plt.title('Similarity Heatmap for All Skills Against Requirements')
         plt.xlabel('Requirements')
         plt.ylabel('Skills')
@@ -333,6 +335,28 @@ def skills_heatmap_function(resume_text, job_offer):
         plt.show()
     plot_heatmap(similarity_matrix, all_skills, requirements)
 
+
+def job_titles_list_function (resume_text, num_job_offers):
+    job_titles_prompt = PromptTemplate(
+        input_variables=["resume_text", "num_job_offers"],
+        template=""" You are an AI assistant designed to enhance and optimize resumes to better match specific job offers.
+        Given a resume ({resume_text}) and an integer ({num_job_offers}):
+            1.Identify and return a list of the {num_job_offers} most relevant job titles that best match the skills and experience described in the resume. 
+            2.Focus on titles that directly align with the candidate's qualifications and consider factors like keywords, technologies mentioned, and past job roles.
+        
+        Return just the list of job titles as a bullet-point list.  
+        
+        resume_text: {resume_text}
+        num_job_offers: {num_job_offers}
+        """
+    )
+    with st.sidebar.container(border=True):
+        st.text(f"Running prompt: {job_titles_prompt.template}")
+    job_titles_chain = LLMChain(llm=model, prompt=job_titles_prompt, verbose=False)
+    job_titles = job_titles_chain.run(resume_text=st.session_state.resume_text,
+                                        num_job_offers=st.session_state.num_job_offers_input                                           
+                                        )
+    return job_titles  
 
 def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
     custom_user_prompt = PromptTemplate(
@@ -410,7 +434,8 @@ with tab1:
 with tab2:
     col1, col2 = st.columns(2)
     feature_suggested_changes_button = col1.button("TUNE YOUR RESUME")
-    feature_5 = col2.button("TITLE NAMES FOR JOB SEARCH")
+    feature_suggested_titles_button = col2.button("TITLE NAMES FOR JOB SEARCH")
+    st.session_state.num_job_offers_input = col2.slider('Select number of job offers', 1, 20, 5)
     container2 = st.container(border=True)
     
 with tab3:
@@ -463,7 +488,7 @@ with container1:
     elif semantic_heatmap_button:
         if st.session_state.resume_text and st.session_state.job_offer_text:
             st.write("### Semantic Heatmap")
-            st.write("The heatmap represents the semantic similarity matrix between the skills and experiences from the resume and the job offer requirements. (processing time: 1min aprox.)")
+            st.write("The heatmap represents the semantic similarity matrix between the skills and experiences from the resume and the job offer requirements. (processing time: 1 to 2 minutes aprox.)")
             skills_heatmap_function(resume_text=st.session_state.resume_text, 
                                     job_offer=st.session_state.job_offer_text)
             st.pyplot(plt)
@@ -478,6 +503,7 @@ with container2:
                                                    job_title=st.session_state.job_title
                                                    )
             st.markdown("### Suggested Changes")
+            st.write("The following suggestions will help you to find other job opportunities that match with your profile")
             suggested_changes_answer_text = suggested_changes_answer.strip() 
             st.write(suggested_changes_answer_text)
             feature_9 = st.button("APPLY CHANGES AND REPEAT ANALYSIS")
@@ -485,8 +511,21 @@ with container2:
                 st.warning("Feature 8 is not yet implemented")
         else:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
-    elif feature_5:
-        st.write("Feature 5 is not yet implemented")
+    elif feature_suggested_titles_button:
+        if st.session_state.resume_text:
+            # st.session_state.num_job_offers_input = st.slider('Select number of job offers', 1, 20, 5)
+            # # Check if the slider value has changed
+            # if "num_job_offers_input" not in st.session_state or st.session_state.num_job_offers_input != num_job_offers_input:
+            #     # Store the current slider value as the previous one for the next run
+            #     st.session_state.num_job_offers_input = num_job_offers_input
+                
+            suggested_job_titles_answer = job_titles_list_function(resume_text=st.session_state.resume_text, 
+                                                                    num_job_offers=st.session_state.num_job_offers_input
+                                                                    )
+            st.markdown("### Suggested Job Titles")
+            suggested_job_titles_text= suggested_job_titles_answer.strip()
+            st.write(suggested_job_titles_text)
+        
         
 with container3: 
     if feature_6 or feature_7 or feature_8:
