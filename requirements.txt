@@ -13,3 +13,4 @@ git+https://github.com/unifyai/langchain.git#egg=langchain&subdirectory=libs/lan
 git+https://github.com/unifyai/langchain.git#egg=langchain-unify&subdirectory=libs/partners/unify
 sentence-transformers
 torch
+httpx
