@@ -13,7 +13,7 @@ from langchain.chains import LLMChain
 from data.unify_endpoints_data import model_provider, dynamic_provider
 from langchain_unify.chat_models import ChatUnify
 from sentence_transformers import SentenceTransformer, util
-
+from httpx import LocalProtocolError
 
 # Function to extract text from a PDF or DOCX document
 def extract_text_from_file(file):
@@ -40,9 +40,9 @@ def extract_text_from_file(file):
 
 
 # Configure the Streamlit page
-st.set_page_config("LLM Resume Analyser", page_icon="🚀")  
-st.title("LLM Resume Analyser 🚀")
-st.write("Try many models to see how they behave with your resume and job offer.")
+st.set_page_config("LLM Resume Analyser", page_icon="😎")  
+st.title("LLM Resume Analyser 😎")
+st.write("Try different LLMs to see how they behave with your resume and a job offer.")
 
 # Initialize session state variables
 if 'unify_api_key' not in st.session_state:
@@ -66,11 +66,14 @@ if "num_job_offers_input" not in st.session_state:
 
 
 with st.sidebar:
-    st.write("Select your favorite LLM models and compare the provided insights.")
+    st.write("Choose a LLM to perform the analysis.")
+    st.write("")
     st.session_state.unify_api_key = st.text_input("Unify API Key*", type="password",
-                                                   placeholder="Enter Unify API Key")
+                                                   placeholder="Enter Unify API Key", 
+                                                   help="All your favorite models with [Unify API](https://console.unify.ai)"
+                                                )
     
-    with st.expander("Model and Provider Selection"):
+    with st.expander("Model and Provider selection"):
         model_name = st.selectbox("Select Model", options=model_provider.keys(), index=20,
                                   placeholder="Model", help="All your favorite models with Unify API")
     
@@ -83,7 +86,7 @@ with st.sidebar:
         model_temperature = st.slider("Temperature", min_value=0.1, max_value=1.0, value=0.3, step=0.1)   
     st.session_state.endpoint = f"{model_name}@{provider_name}"
     
-    with st.expander("Resume and job offer inputs"):
+    with st.expander("Resume and Job offer inputs"):
         st.session_state.resume_doc = st.file_uploader(label="Upload your Resume*", type=("pdf","docx"), accept_multiple_files=False)
 
         if st.session_state.resume_doc is not None and st.button("Process resume"): 
@@ -97,13 +100,23 @@ with st.sidebar:
         
         st.session_state.job_title = st.text_input("Job title*", key="Job_title", placeholder="enter here your desired job title")
     
-# Unify model initialization     
-model = ChatUnify(
+
+try:    
+    # Unify model initialization     
+    model = ChatUnify(
         model=st.session_state.endpoint,
         unify_api_key=st.session_state.unify_api_key,
         temperature=model_temperature
         )
-
+except LocalProtocolError as e:
+    if 'Bearer' in str(e):
+        st.warning("""
+            Insert your UNIFY API key here or get one from 
+            [console.unify.ai](https://console.unify.ai)
+            """
+        )
+    else:
+        raise e
 
 def feature_match_function(resume_text, job_offer, job_title):
     with st.spinner("Setting up the model..."):
@@ -157,7 +170,7 @@ def feature_match_function(resume_text, job_offer, job_title):
 def match_report(match_answer):
     def extract_text_analysis(match_answer):
         if "{" not in match_answer or "}" not in match_answer:
-            st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
+            st.warning("Please try again. As some language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
         # Extract JSON part from the match answer and convert it to a dictionary
         json_start = match_answer.index("{")
         json_end = match_answer.rindex("}") + 1
@@ -166,7 +179,7 @@ def match_report(match_answer):
         try:
             scores_dict = json.loads(json_part)
         except json.JSONDecodeError as e:
-            st.warning("Please try again. As small language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
+            st.warning("Please try again. As some language models sometimes have difficulties following precise parsing instructions. If in 5 attempts the model doesn't rise an answer maybe you should consider highly probable that the model is not able to provide the answer.")
         return text_analysis, scores_dict
     
     def create_radar_chart(scores_dict):
@@ -184,6 +197,10 @@ def match_report(match_answer):
         plt.ylim(0, 100)
         ax.plot(angles, scores, linewidth=2, linestyle='solid')
         ax.fill(angles, scores, 'r', alpha=0.1)
+         # Add scores to the plot
+        for label, angle, score in zip(labels, angles, scores):
+            ax.text(angle, score, str(score))
+        
         return fig
   
     text_analysis, scores_dict = extract_text_analysis(match_answer)
@@ -461,7 +478,10 @@ def create_radar_chart(data):
 
         ax.plot(angles, scores, linewidth=2, linestyle='solid', label=f"{model} ({temperature})", color=colors(idx))
         ax.fill(angles, scores, color=colors(idx), alpha=0.25)
-    
+         # Add scores to the chart for the last entry only
+        if idx == len(data) - 1:
+            for angle, score in zip(angles, scores):
+                ax.annotate(str(score), xy=(angle, score), ha='center', va='bottom')
     plt.xticks(angles[:-1], categories)
     ax.set_rlabel_position(5)
     plt.yticks([20, 40, 60, 80, 100], ["20", "40", "60", "80", "100"], color="grey", size=7)
@@ -472,7 +492,7 @@ def create_radar_chart(data):
 
 
 # UI main structure
-tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer","Suggested Changes", "Job Search", "Try your custom prompt"])
+tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer","Improve your Resume", "Job Search", "Try your custom prompt"])
 
 with tab1:
     col1, col2, col3 = st.columns(3)
@@ -484,8 +504,7 @@ with tab1:
 with tab2:
     col1, col2 = st.columns(2)
     feature_suggested_changes_button = col1.button("SUGGESTED CHANGES")
-    apply_changes_button = col2.button("APPLY CHANGES AND COMPARE BOTH ANALYSIS*")
-    col2.write("**Resume VS Job offer analysis will be applied for both resumes. (processing time: 1min aprox.)*")  
+    apply_changes_button = col2.button("APPLY CHANGES AND COMPARE")
     container2 = st.container(border=True)
     
 with tab3:
@@ -593,6 +612,7 @@ with container2:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
       
     if apply_changes_button:
+        st.write("**Resume VS Job offer analysis will be applied for both resumes. (processing time: 1min aprox.)*")  
         if st.session_state.suggested_changes:
             if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
                 original_match_answer = feature_match_function(resume_text=st.session_state.resume_text, 
@@ -633,8 +653,14 @@ with container2:
                         st.write(new_analysis_text)
                         st.write("new Radar Chart")
                         st.pyplot(new_radar_chart)    
-                with st.expander("new resume text"):
-                    st.write(resume_updated_text)    
+                with st.expander("**updated Resume text**"):
+                    st.write(resume_updated_text)
+                    st.download_button(
+                            label="Download updated resume text",
+                            data=resume_updated_text,
+                            file_name="updated_resume.txt",
+                            mime="text/plain",)
+                        
             else:
                 st.warning("Please upload a resume and provide a job offer text and job title to proceed.")                
         else:
