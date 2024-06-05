@@ -66,7 +66,7 @@ if "num_job_offers_input" not in st.session_state:
 
 
 with st.sidebar:
-    st.write("Select your favorite LLM model to assist you in enhancing your career prospects.")
+    st.write("Select your favorite LLM models and compare the provided insights.")
     st.session_state.unify_api_key = st.text_input("Unify API Key*", type="password",
                                                    placeholder="Enter Unify API Key")
     
@@ -106,49 +106,51 @@ model = ChatUnify(
 
 
 def feature_match_function(resume_text, job_offer, job_title):
-    feature_match_prompt = PromptTemplate(
-        input_variables=["resume_text", "job_offer", "job_title"],
-        template = """You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
-        Your task is to review the provided resume against the given job offer description and job title. 
-        Follow the steps below in order to complete the task:
+    with st.spinner("Setting up the model..."):
+        feature_match_prompt = PromptTemplate(
+            input_variables=["resume_text", "job_offer", "job_title"],
+            template = """You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
+            Your task is to review the provided resume against the given job offer description and job title. 
+            Follow the steps below in order to complete the task:
 
-        step 1. Make a list of:
-            - Matching soft skills
-            - Matching hard skills
-            - Relevant experiences for the position
-            - Matching education and certifications
-            - Missing keywords
+            step 1. Make a list of:
+                - Matching soft skills
+                - Matching hard skills
+                - Relevant experiences for the position
+                - Matching education and certifications
+                - Missing keywords
 
-        step 2. Score each category as follows:
-            - "Soft skills": 15 points for each matching soft skill (minimum 0 points, maximum 100 points).
-            - "Hard skills": 10 points for each matching hard skill(minimum 0 points, maximum 100 points).
-            - "Experience": 20 points for each relevant experience for the position(minimum 0 points, maximum 100 points).
-            - "Education and certifications": 30 points for each matching education or certification(minimum 0 points, maximum 100 points).
-            - "Keywords": 100 minus 4 points for each missing keyword (minimum 0 points, maximum 100 points).
+            step 2. Score each category as follows:
+                - "Soft skills": 15 points for each matching soft skill (minimum 0 points, maximum 100 points).
+                - "Hard skills": 10 points for each matching hard skill(minimum 0 points, maximum 100 points).
+                - "Experience": 20 points for each relevant experience for the position(minimum 0 points, maximum 100 points).
+                - "Education and certifications": 30 points for each matching education or certification(minimum 0 points, maximum 100 points).
+                - "Keywords": 100 minus 4 points for each missing keyword (minimum 0 points, maximum 100 points).
 
 
-        step 3. Provide the output in two parts:
-        1. **Analysis Summary**: An analysis summary of how the candidate's profile aligns with the role description in the job offer, including a reference to the scores, highlighting the strengths and weaknesses of the applicant in relation to the specified job offer description..
-        2. **Scores**: A JSON format with the scores for each category using the template below:
-            {{
-            "Soft skills": <soft_skills_score>,
-            "Hard skills": <hard_skills_score>,
-            "Experience": <experience_score>,
-            "Education and certifications": <education_and_certifications_score>,
-            "Keywords": <keywords_score>
-            }}
-            
-        Resume Text: {resume_text}
-        Job Offer: {job_offer}
-        Job Title: {job_title}
-        """
-        )
+            step 3. Provide the output in two parts:
+            1. **Analysis Summary**: An analysis summary of how the candidate's profile aligns with the role description in the job offer, including a reference to the scores, highlighting the strengths and weaknesses of the applicant in relation to the specified job offer description..
+            2. **Scores**: A JSON format with the scores for each category using the template below:
+                {{
+                "Soft skills": <soft_skills_score>,
+                "Hard skills": <hard_skills_score>,
+                "Experience": <experience_score>,
+                "Education and certifications": <education_and_certifications_score>,
+                "Keywords": <keywords_score>
+                }}
+                
+            Resume Text: {resume_text}
+            Job Offer: {job_offer}
+            Job Title: {job_title}
+            """
+            )
     with st.sidebar.container(border=True):
         st.text(f"Running prompt: {feature_match_prompt.template}")
     feature_match_chain = LLMChain(llm=model, prompt=feature_match_prompt, verbose=False)
-    match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
-                                                   job_offer=st.session_state.job_offer_text, 
-                                                   job_title=st.session_state.job_title)
+    with st.spinner('Computing match...'):
+        match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
+                                                    job_offer=st.session_state.job_offer_text, 
+                                                    job_title=st.session_state.job_title)
     return match_answer
 
 
@@ -220,47 +222,48 @@ def suggested_changes_function(resume_text, job_offer, job_title):
     return suggested_changes
 
 
-def skills_heatmap_function(resume_text, job_offer):
+def semantic_visualizations_function(resume_text, job_offer):
     # Load pre-trained Sentence-BERT model
     model_encoder = SentenceTransformer('all-MiniLM-L6-v2')
-    
     def skill_list_function (resume_text):
-        skill_list_prompt = PromptTemplate(
-            input_variables=["resume_text"],
-            template="""
-            First extract the following information from the provided resume_text:
-                1. Soft skills list
-                2. Hard skills list
-                3. General keywords in the resume list
-                4. keywords in professional experiences list
-                5. keywords in education and certifications list
-                6. other relevant knowledge keywords list
-            
-            With the information extracted from the resume_text provide the output in JSON format using the template below:
-            {{
-            "soft_skills": ["soft_skill1", "soft_skill2", "soft_skill3", "..."],
-            "hard_skills": ["hard_skill1", "hard_skill2", "hard_skill3", "..."],
-            "keywords": ["keyword1", "keyword2", "keyword3", "..."],
-            "experience": ["experience1", "experience2", "experience3", "..."],
-            "education_and_certifications": ["education1", "certification1", "certification2", "..."],
-            "other_knowledge": ["other_knowledge1", "other_knowledge2", "other_knowledge3", "..."]
-            }}
-            resume_text:
-            {resume_text}
-            """
-        )
+        with st.spinner("Setting up the model..."):
+            skill_list_prompt = PromptTemplate(
+                input_variables=["resume_text"],
+                template="""
+                First extract the following information from the provided resume_text:
+                    1. Soft skills list
+                    2. Hard skills list
+                    3. General keywords in the resume list
+                    4. keywords in professional experiences list
+                    5. keywords in education and certifications list
+                    6. other relevant knowledge keywords list
+                
+                With the information extracted from the resume_text provide the output in JSON format using the template below:
+                {{
+                "soft_skills": ["soft_skill1", "soft_skill2", "soft_skill3", "..."],
+                "hard_skills": ["hard_skill1", "hard_skill2", "hard_skill3", "..."],
+                "keywords": ["keyword1", "keyword2", "keyword3", "..."],
+                "experience": ["experience1", "experience2", "experience3", "..."],
+                "education_and_certifications": ["education1", "certification1", "certification2", "..."],
+                "other_knowledge": ["other_knowledge1", "other_knowledge2", "other_knowledge3", "..."]
+                }}
+                resume_text:
+                {resume_text}
+                """
+            )
         with st.sidebar.container(border=True):
             st.text(f"Running prompt: {skill_list_prompt.template}")
         skill_list_chain = LLMChain(llm=model, prompt=skill_list_prompt, verbose=False)
-        skill_list = skill_list_chain.run(resume_text=st.session_state.resume_text)
-        # Parse JSON string to dictionary
-        json_start1 = skill_list.index("{")
-        json_end1 = skill_list.rindex("}") + 1
-        json_part1 = skill_list[json_start1:json_end1]
-        skill_dict = json.loads(json_part1)
-        # Check if the output is a dictionary
-        if not isinstance(skill_dict, dict):
-            st.warning("No skills found. Try again or try another model.")
+        with st.spinner("extracting skills from resume..."):
+            skill_list = skill_list_chain.run(resume_text=st.session_state.resume_text)
+            # Parse JSON string to dictionary
+            json_start1 = skill_list.index("{")
+            json_end1 = skill_list.rindex("}") + 1
+            json_part1 = skill_list[json_start1:json_end1]
+            skill_dict = json.loads(json_part1)
+            # Check if the output is a dictionary
+            if not isinstance(skill_dict, dict):
+                st.warning("No skills found. Try again or try another model.")
         return skill_dict
 
     def requirements_list_function (job_offer):
@@ -280,16 +283,17 @@ def skills_heatmap_function(resume_text, job_offer):
         with st.sidebar.container(border=True):
             st.text(f"Running prompt: {requirements_list_prompt.template}")
         requirements_list_chain = LLMChain(llm=model, prompt=requirements_list_prompt, verbose=False)
-        requirements_list = requirements_list_chain.run(job_offer=st.session_state.job_offer_text)
-        # Parse JSON string to dictionary
-        json_start2 = requirements_list.index("{")
-        json_end2 = requirements_list.rindex("}") + 1
-        json_part2 = requirements_list[json_start2:json_end2]
-        requirements_dict = json.loads(json_part2)
-        # Check if the output is a dictionary
-        if not isinstance(requirements_dict, dict):
-            st.warning("Output is not a dictionary. Try again or try another model.")
-        return requirements_dict
+        with st.spinner("extracting requirements from job offer..."):
+            requirements_list = requirements_list_chain.run(job_offer=st.session_state.job_offer_text)
+            # Parse JSON string to dictionary
+            json_start2 = requirements_list.index("{")
+            json_end2 = requirements_list.rindex("}") + 1
+            json_part2 = requirements_list[json_start2:json_end2]
+            requirements_dict = json.loads(json_part2)
+            # Check if the output is a dictionary
+            if not isinstance(requirements_dict, dict):
+                st.warning("Output is not a dictionary. Try again or try another model.")
+        return requirements_dict       
     
     skill_dict = skill_list_function(resume_text=st.session_state.resume_text)
     requirements_dict = requirements_list_function(job_offer=st.session_state.job_offer_text)  
@@ -300,7 +304,7 @@ def skills_heatmap_function(resume_text, job_offer):
     for category in skill_dict:
         all_skills.extend(skill_dict[category])
 
-    st.write(f"Total skills collected: {len(all_skills)}")
+    st.write(f"Total features collected: {len(all_skills)}")
     # Define similarity function using BERT
     def evaluate_similarity(sentence1, sentence2):
         embeddings1 = model_encoder.encode(sentence1, convert_to_tensor=True)
@@ -309,51 +313,56 @@ def skills_heatmap_function(resume_text, job_offer):
         return similarity.item()
     # Create similarity matrix
     def create_similarity_matrix(skill_list, requirement_list):
-        try:
-            matrix = np.zeros((len(skill_list), len(requirement_list)))
-            for i, skill in enumerate(skill_list):
-                for j, req in enumerate(requirement_list):
-                    matrix[i, j] = evaluate_similarity(skill, req)
-            return matrix
-        except Exception as e:
-            st.warning("It didn't work this time, try it again! Take in consideration that small models sometimes struggle when it comes to give a formatted answer.")      
-    
+        with st.spinner("computing semantic similarity matrix..."):
+            try:
+                matrix = np.zeros((len(skill_list), len(requirement_list)))
+                for i, skill in enumerate(skill_list):
+                    for j, req in enumerate(requirement_list):
+                        matrix[i, j] = evaluate_similarity(skill, req)
+                return matrix
+            except Exception as e:
+                st.warning("It didn't work this time, try it again! Take in consideration that small models sometimes struggle when it comes to give a formatted answer.")      
+        
     similarity_matrix = create_similarity_matrix(all_skills, requirements)
     
     # Plot heatmap
-    st.write("##### Semantic Heatmap")
-    def plot_heatmap(matrix, skill_list, requirement_list):
-        df = pd.DataFrame(matrix, index=skill_list, columns=requirement_list)
-        df = df.loc[:, df.sum().sort_values(ascending=False).index]  # Sort columns by their sum
-        df = df.T   # Transpose the dataframe for better visualization
-        plt.figure(figsize=(20, 15))
-        sns.heatmap(df, annot=False, cmap='viridis', cbar=True, linewidths=.2)
-        # plt.title('Similarity Heatmap for All Skills Against Requirements')
-        #plt.xlabel('Requirements')
-        #plt.ylabel('Skills')
-        plt.xticks(rotation=90)
-        plt.yticks(rotation=0)
-        st.pyplot(plt)
-    plot_heatmap(similarity_matrix, all_skills, requirements)
+    with st.spinner('Generating Visualization 1...'):
+        st.write("##### Semantic Heatmap")
+        st.write ("This heatmap represents the semantic similarity matrix that was previously calculated, comparing each skill and experience from the resume against the job offer requirements.")
+        def plot_heatmap(matrix, skill_list, requirement_list):
+            df = pd.DataFrame(matrix, index=skill_list, columns=requirement_list)
+            df = df.loc[:, df.sum().sort_values(ascending=False).index]  # Sort columns by their sum
+            df = df.T   # Transpose the dataframe for better visualization
+            plt.figure(figsize=(20, 15))
+            sns.heatmap(df, annot=False, cmap='viridis', cbar=True, linewidths=.2)
+            # plt.title('Similarity Heatmap for All Skills Against Requirements')
+            #plt.xlabel('Requirements')
+            #plt.ylabel('Skills')
+            plt.xticks(rotation=90)
+            plt.yticks(rotation=0)
+            st.pyplot(plt)
+        plot_heatmap(similarity_matrix, all_skills, requirements)
     
     # Plot barplot
-    st.write("##### Requirements distributed score")
-    def plot_sum_bar(matrix, requirement_list):
-        sum_values = np.sum(matrix, axis=0)
-        df_sum = pd.DataFrame(sum_values, index=requirement_list, columns=['Sum'])
-        df_sum = df_sum.sort_values(by='Sum', ascending=True)
-        # Normalize the sum_values for colormap mapping
-        norm = mcolors.Normalize(vmin=df_sum['Sum'].min(), vmax=df_sum['Sum'].max())
-        colors = [plt.cm.viridis(norm(value)) for value in df_sum['Sum']]
+    with st.spinner('Generating Visualization 2...'):
+        st.write("##### Requirements distributed score")
+        st.write("The following bar plot displays the total similarity scores of the job offer keywords as they are distributed across the skills and experiences listed in the resume. This approach evaluates how well the resume aligns with the job requirements by considering the entire profile in a comprehensive manner.")
+        def plot_sum_bar(matrix, requirement_list):
+            sum_values = np.sum(matrix, axis=0)
+            df_sum = pd.DataFrame(sum_values, index=requirement_list, columns=['Sum'])
+            df_sum = df_sum.sort_values(by='Sum', ascending=True)
+            # Normalize the sum_values for colormap mapping
+            norm = mcolors.Normalize(vmin=df_sum['Sum'].min(), vmax=df_sum['Sum'].max())
+            colors = [plt.cm.viridis(norm(value)) for value in df_sum['Sum']]
 
-        plt.figure(figsize=(20, 15))
-        plt.barh(df_sum.index, df_sum['Sum'], color=colors)
-        #plt.xlabel('Distributed score by sum of similarities')
-        #plt.ylabel('Requirements')
-        plt.xticks(rotation=0)  # Rotate x-axis labels by 90 degrees
-        plt.box(False)  # Remove the frame
-        st.pyplot(plt)
-    plot_sum_bar(similarity_matrix, requirements)
+            plt.figure(figsize=(20, 15))
+            plt.barh(df_sum.index, df_sum['Sum'], color=colors)
+            #plt.xlabel('Distributed score by sum of similarities')
+            #plt.ylabel('Requirements')
+            plt.xticks(rotation=0)  # Rotate x-axis labels by 90 degrees
+            plt.box(False)  # Remove the frame
+            st.pyplot(plt)
+        plot_sum_bar(similarity_matrix, requirements)
         
     
 def job_titles_list_function (resume_text, num_job_offers):
@@ -435,7 +444,7 @@ def create_radar_chart(data):
 
 
 # UI main structure
-tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer", "Get a job", "Career advice", "custom prompt"])
+tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer", "Job Search", "Career Growth Plan", "Try your custom prompt"])
 
 with tab1:
     col1, col2, col3 = st.columns(3)
@@ -486,11 +495,11 @@ with container1:
             st.warning("Please upload a resume and provide a job offer text and job title to proceed.")
             
     elif Scores_button:
-        st.write("### Scores by the models used in this session")
+        st.write("### Scores by the models used in this session*")
         # Radar chart for all models used in the session
         model_names = [entry['model'] for entry in st.session_state.scores]
         num_queries = len(st.session_state.scores)
-        st.write("####### For better understanding of this feature is recommended to try the 'Resume Match' feature with different models and temperatures.")
+        st.write("**For better understanding of this feature is recommended to try the 'Resume Match' feature with different models and temperatures.*")
         st.write(f"In your session, you have conducted {num_queries} queries to these models: {model_names}")
         st.write("")
         st.write("")
@@ -534,10 +543,9 @@ with container1:
     elif semantic_visualizations_button:
         if st.session_state.resume_text and st.session_state.job_offer_text:
             st.write("### Visualizations based on the semantic similarity matrix")
-            st.write("""The heatmap represents the semantic similarity matrix between the skills and experiences  from the resume and the job offer requirements. 
-                     The barplot represents the sum of similarities distributed across the job offer keywords 
-                     (processing time: 1 to 2 minutes aprox.)""")
-            skills_heatmap_function(resume_text=st.session_state.resume_text, 
+            st.write(""" After the model extracts a list of skills and experiences from the resume and similarly processes the requirements in the job offer, a similarity matrix is computed using an embedding process. This matrix enables us to thoroughly explore the candidate's match with the job offer by comparing the entire profile against the job requirements. Visualizations provide a more intuitive way to interpret these insights.
+                     As the time complexity is O(n^2) depending on the number of skills and experiences extracted, computing time can vary significantly between models.(processing time: 1 to 2 minutes aprox.)""")
+            semantic_visualizations_function(resume_text=st.session_state.resume_text, 
                                     job_offer=st.session_state.job_offer_text)
                      
         else:
