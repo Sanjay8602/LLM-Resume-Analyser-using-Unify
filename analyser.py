@@ -455,7 +455,7 @@ with tab3:
     col1, col2, col3 = st.columns(3)
     feature_6 = col1.button("SHORT TERM")
     feature_7 = col2.button("MID TERM")
-    feature_8 = col2.button("LONG TERM") 
+    feature_8 = col3.button("LONG TERM") 
     container3 = st.container(border=True)
     
 with tab4:
