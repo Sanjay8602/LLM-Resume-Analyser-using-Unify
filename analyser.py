@@ -489,11 +489,9 @@ with tab2:
     container2 = st.container(border=True)
     
 with tab3:
-    col1, col2, col3 = st.columns(3)
+    col1, col2= st.columns()
     feature_suggested_titles_button = col1.button("TITLE NAMES FOR JOB SEARCH")
     st.session_state.num_job_offers_input = col2.slider('Select number of job offers', 1, 20, 5)
-    feature_7 = col2.button("MID TERM")
-    feature_8 = col3.button("LONG TERM") 
     container3 = st.container(border=True)
     
 with tab4:
