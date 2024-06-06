@@ -490,6 +490,32 @@ def create_radar_chart(data):
     plt.show()
 
 
+def create_bar_plot(data):
+    df = pd.DataFrame(data)
+    # Normalize the score JSON data
+    scores_df = pd.json_normalize(df['score'])
+    scores_df['model'] = df['model']
+    scores_df['temperature'] = df['temperature']
+
+    # Prepare the data for plotting
+    melted_df = scores_df.melt(id_vars=['model', 'temperature'], var_name='Category', value_name='Score')
+    melted_df['Label'] = melted_df['model'] + " (" + melted_df['temperature'].astype(str) + ")"
+
+    # Grouped bar chart where bars are grouped by category and colored by model + temperature
+    plt.figure(figsize=(12, 8))
+    sns.barplot(data=melted_df, x='Category', y='Score', hue='Label', palette='Set2')
+
+    plt.xlabel('')
+    plt.ylabel('')
+    # plt.title('Scores by Category for Different Models and Temperatures')
+    plt.legend(loc='upper right', title='Model (Temperature)')
+    plt.xticks(rotation=90, ha='right')
+    plt.tight_layout()
+    sns.despine()  
+    plt.show()    
+    
+    
+    
 # UI main structure
 tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer","Improve your Resume", "Job Search", "Try your custom prompt"])
 
@@ -560,29 +586,9 @@ with container1:
         st.write("##### Grouped Bar Chart of Scores by Category for Different Models and Temperatures")
         st.write("This chart shows grouped bars by category and colored by model and temperature. Even the distance between different model outputs some patterns are visible.")
         st.write("")
-        
-        df = pd.DataFrame(st.session_state.scores)
-        # Normalize the score JSON data
-        scores_df = pd.json_normalize(df['score'])
-        scores_df['model'] = df['model']
-        scores_df['temperature'] = df['temperature']
-
-        # Prepare the data for plotting
-        melted_df = scores_df.melt(id_vars=['model', 'temperature'], var_name='Category', value_name='Score')
-        melted_df['Label'] = melted_df['model'] + " (" + melted_df['temperature'].astype(str) + ")"
-
-        # Grouped bar chart where bars are grouped by category and colored by model + temperature
-        plt.figure(figsize=(12, 8))
-        sns.barplot(data=melted_df, x='Category', y='Score', hue='Label', palette='Set2')
-
-        plt.xlabel('')
-        plt.ylabel('')
-        # plt.title('Scores by Category for Different Models and Temperatures')
-        plt.legend(loc='upper right', title='Model (Temperature)')
-        plt.xticks(rotation=90, ha='right')
-        plt.tight_layout()
-        sns.despine()  
+        create_bar_plot(st.session_state.scores)
         st.pyplot(plt)
+        
 
         
     elif semantic_visualizations_button:
@@ -664,8 +670,7 @@ with container2:
                 st.warning("Please upload a resume and provide a job offer text and job title to proceed.")                
         else:
             st.warning("Please generate suggested changes before.")
-            
-    
+               
 with container3: 
     if feature_suggested_titles_button:
         if st.session_state.resume_text:
@@ -682,8 +687,7 @@ with container3:
             st.write("Suggested job titles based on the candidate's profile can expand the job search, uncovering opportunities that were previously overlooked.")
             suggested_job_titles_text= suggested_job_titles_answer.strip()
             st.write(suggested_job_titles_text)       
-        
-            
+                
 with container4:           
     if submit_user_prompt_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
