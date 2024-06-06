@@ -388,12 +388,11 @@ def apply_changes_function (resume_text, suggested_changes):
     apply_changes_prompt = PromptTemplate(
         input_variables=["resume_text", "suggested_changes"],
         template=""" You are an AI assistant designed to enhance and optimize resumes to better match specific job offers.
-        Given a resume ({resume_text}) and a report with suggested changes ({suggested_changes}):
-            1. Keeping the {resume_text} structure, apply or add the suggested changes from {suggested_changes} to the {resume_text}. 
-            2. Don't add anything that is not in at least one of the provided documents. 
-            2. Rephrase  the resume (just when it's needed) for coherence after applying the changes. Don't made up any skill or experience that is not provided in the provided documents. 
+        Given a resume ({resume_text}) and a report with suggested changes ({suggested_changes}) you will have to apply the changes to create an updated new resume:
+            1. Keeping all the {resume_text} keywords, skills, qualifications, and experiences, add the suggested changes from {suggested_changes} to the new resume.
+            2. Apply the rephrasing suggestions to the new resume. 
             
-        Return as unic output the resultant resume in string format.  
+        After applying the previous changes, return the resultant new resume as output.
         
         resume_text: {resume_text}
         suggested_changes: {suggested_changes}
