@@ -355,16 +355,23 @@ def suggested_changes_function(resume_text, job_offer):
             Your task is to review the provided resume in light of the given job offer description and provide detailed suggestions for improvement.
         
             Follow these steps in order:
-            1. Identify and list matching soft skills, hard skills, qualifications, and experiences between the resume and the job offer.
-            2. Extract and list keywords from both the job offer and the resume.
+            1. Extract and list keywords from both the job offer and the resume.
+            2. Identify and list matching soft skills, hard skills, qualifications, and experiences between the resume and the job offer.
             3. Identify missing keywords in the resume that are present in the job offer.
-            4. Highlight keywords and skills implied by the resume that could be explicitly added.
+            4. Identify keywords and skills implied by the resume that could be explicitly added.
             5. Identify missing experiences in the resume that are implied and could be explicitly added.
-            6. Based on the previous lists, provide specific bullet-point suggestions for rephrasing, adding, or deleting keywords or experiences to enhance the resume's alignment with the job offer.
 
-            Ensure that the suggestions are relevant, avoid redundancy, and maintain a balance in the resume content.
+            Output a suggestions list using the following format and nothing else:
+                A. Rephrasing suggestions:
+                - <bullet-point list of rephrasing suggestions>
+                
+                B. Adding keywords and skills:
+                - <bullet-point list of additional keywords and skills>
+                
+                C. Adding missing experiences:
+                - <bullet-point list of additional experiences>
 
-            Summarize and output only points 4, 5, and 6 (rename them as A, B, and C).
+            Ensure that the suggestions are highly relevant to the job offer, contextually appropriate, professionally beneficial, and they avoid redundant or unnecessary additions. Do not include any other text or explanations outside the specified format.
 
             resume_text: {resume_text}
             job_offer: {job_offer}
@@ -380,18 +387,21 @@ def suggested_changes_function(resume_text, job_offer):
         return suggested_changes
 
 
-def apply_changes_function (resume_text, suggested_changes):
+def apply_changes_function (resume_text, job_offer, suggested_changes):
     apply_changes_prompt = PromptTemplate(
-        input_variables=["resume_text", "suggested_changes"],
+        input_variables=["resume_text", "job_offer", "suggested_changes"],
         template="""You are an AI assistant designed to enhance and optimize resumes to better match specific job offers.
         Given a resume ({resume_text}) and a report with suggested changes ({suggested_changes}), you will apply the changes to create an updated new resume:
-            1. Retain all the existing keywords, skills, qualifications, and experiences from the {resume_text}.
-            2. Add the suggested changes from {suggested_changes} to the new resume, ensuring they fit naturally and contextually.
-            3. Apply the rephrasing suggestions while maintaining the overall coherence and focus of the resume.
+            
+            1. Add the suggested changes from {suggested_changes} to the new resume, ensuring they fit naturally and contextually.
+            2. Apply the rephrasing suggestions while maintaining the overall coherence and focus of the resume.
+            3. Verify that the updated resume keep all the existing keywords, skills, qualifications, and experiences from the {resume_text} that are valuable for the job offer ({job_offer}).
+            4. Ensure that the new resume is well-structured, concise, and tailored to the job offer
 
         Return the updated resume as the final output.
 
         resume_text: {resume_text}
+        job_offer: {job_offer}
         suggested_changes: {suggested_changes}
         """
     )
@@ -400,7 +410,8 @@ def apply_changes_function (resume_text, suggested_changes):
     apply_changes_chain = LLMChain(llm=model, prompt=apply_changes_prompt, verbose=False)
     with st.spinner("applying changes..."):
         resume_updated_text = apply_changes_chain.run(resume_text=st.session_state.resume_text,
-                                            suggested_changes= st.session_state.suggested_changes                                           
+                                                      job_offer=st.session_state.job_offer_text, 
+                                            suggested_changes= st.session_state.suggested_changes                                       
                                             )
         return resume_updated_text 
 
@@ -505,6 +516,8 @@ def create_bar_plot(data):
     # Grouped bar chart where bars are grouped by category and colored by model + temperature
     fig, ax = plt.subplots(figsize=(12, 8)) 
     sns.barplot(data=melted_df, x='Category', y='Score', hue='Label', palette='viridis_r')
+
+    # Add a star symbol over the bars for those who have double asterisks at the end of the model value
 
     plt.xlabel('')
     plt.ylabel('')
@@ -631,7 +644,8 @@ with container2:
                                                 }) 
                     
                 resume_updated = apply_changes_function(resume_text=st.session_state.resume_text,
-                                                                    suggested_changes= st.session_state.suggested_changes)
+                                                        job_offer=st.session_state.job_offer_text,
+                                                        suggested_changes= st.session_state.suggested_changes)
                 st.session_state.suggested_changes = ""  
                 resume_updated_text = resume_updated.strip() 
                 st.session_state.resume_updated_text = resume_updated_text
