@@ -44,9 +44,9 @@ python -m streamlit run analyser.py
 
 ## Contributors
 
-| Name | GitHub Profile |
-|------|----------------|
-| contB | [PROFileB](https://--) |
-| contribC | [PROFileC](https://github...) |
-| contribA | [PROFileA](https://github....) |
-| contribA | [PROFileA](https://github....) |
+|       Name       |                  GitHub Profile                 |
+|------------------|-------------------------------------------------|
+| Sanjay Suthar    | [Sanjay0806](https://github.com/Sanjay8602)     |
+| OscarArroyoVega  | [OscarAV](https://github.com/OscarArroyoVega)   |
+| Mayssa Rekik     | [Mayssa Rekik](https://github.com/iammayssa)    |
+| Jeya Balang      | [Jeyabalang](https://github.com/jeyabalang)     |
