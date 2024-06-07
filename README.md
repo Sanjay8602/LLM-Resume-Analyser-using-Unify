@@ -12,7 +12,9 @@ LLM RESUME ANALYSER is an application that allows you to improve your CV using m
 
 ## Tech Stack
 Streamlit: Used for creating the web application interface that is intuitive and interactive.
+
 Unify AI: Provides the backend LLMs that power the interactions within the application. Unify's API is utilized to send prompts to the LLMs and receive their responses in real-time.
+
 Langchain: LangChain is a powerful framework designed for building applications that integrate with large language models (LLMs), enabling complex interactions and workflows by chaining together various components like prompts, LLMs, and data sources
 
 
@@ -36,7 +38,7 @@ To run the application locally, follow these steps:
 ```bash
 git clone https://github.com/Sanjay8602/LLM-Resume-Analyser-using-Unify
 ```
-3. Set up your virtual environment and install the dependencies from `requirements.txt`:
+2. Set up your virtual environment and install the dependencies from `requirements.txt`:
 ```bash
 python -m venv .venv    # create virtual environment 
 ```
