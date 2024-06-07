@@ -118,32 +118,26 @@ except LocalProtocolError as e:
     else:
         raise e
 
-def feature_match_function(resume_text, job_offer, job_title):
+def feature_match_function(resume_text, job_offer):
     with st.spinner("Setting up the model..."):
         feature_match_prompt = PromptTemplate(
-            input_variables=["resume_text", "job_offer", "job_title"],
+            input_variables=["resume_text", "job_offer"],
             template = """You are an AI assistant powered by a Language Model, designed to provide guidance for enhancing and optimizing resumes. 
-            Your task is to review the provided resume against the given job offer description and job title. 
+            Your task is to review the provided resume against the given job offer description. 
             Follow the steps below in order to complete the task:
 
-            step 1. Make a list of:
+            Step 1: Identify and list:
                 - Matching soft skills
                 - Matching hard skills
                 - Relevant experiences for the position
-                - Matching education and certifications
-                - Missing keywords
+                - Matching qualifications (education and certifications)
+                - Other relevant keywords
 
-            step 2. Score each category as follows:
-                - "Soft skills": 15 points for each matching soft skill (minimum 0 points, maximum 100 points).
-                - "Hard skills": 10 points for each matching hard skill(minimum 0 points, maximum 100 points).
-                - "Experience": 20 points for each relevant experience for the position(minimum 0 points, maximum 100 points).
-                - "Education and certifications": 30 points for each matching education or certification(minimum 0 points, maximum 100 points).
-                - "Keywords": 100 minus 4 points for each missing keyword (minimum 0 points, maximum 100 points).
+            Step 2: Assign a score from 1 to 100 for each category based on how well the resume matches the job offer. Provide the scores in the specified format without any modifications.
 
-
-            step 3. Provide the output in two parts:
-            1. **Analysis Summary**: An analysis summary of how the candidate's profile aligns with the role description in the job offer, including a reference to the scores, highlighting the strengths and weaknesses of the applicant in relation to the specified job offer description..
-            2. **Scores**: A JSON format with the scores for each category using the template below:
+            Step 3: Provide the output in two parts:
+            1. **Analysis Summary**: An analysis summary of how the candidate's profile aligns with the role description in the job offer. Highlight the strengths and weaknesses of the applicant in relation to the specified job offer description.
+            2. **---**: A JSON format detailing the identified matches and their scores in each category using the template below. Ensure that the JSON format is strictly followed to avoid parsing errors:
                 {{
                 "Soft skills": <soft_skills_score>,
                 "Hard skills": <hard_skills_score>,
@@ -154,16 +148,16 @@ def feature_match_function(resume_text, job_offer, job_title):
                 
             Resume Text: {resume_text}
             Job Offer: {job_offer}
-            Job Title: {job_title}
+
+            Ensure that the JSON output is correctly formatted and can be parsed without errors.
             """
-            )
+        )
     with st.sidebar.container(border=True):
         st.text(f"Running prompt: {feature_match_prompt.template}")
     feature_match_chain = LLMChain(llm=model, prompt=feature_match_prompt, verbose=False)
     with st.spinner('Generating match...'):
         match_answer = feature_match_chain.run(resume_text=st.session_state.resume_text, 
-                                                    job_offer=st.session_state.job_offer_text, 
-                                                    job_title=st.session_state.job_title)
+                                            job_offer=st.session_state.job_offer_text)
     return match_answer
 
 
@@ -183,6 +177,7 @@ def match_report(match_answer):
         return text_analysis, scores_dict
     
     def create_radar_chart(scores_dict):
+        
         labels = list(scores_dict.keys())
         num_vars = len(labels)
         angles = [n / float(num_vars) * 2 * pi for n in range(num_vars)]
@@ -352,49 +347,61 @@ def semantic_visualizations_function(resume_text, job_offer):
         plot_sum_bar(similarity_matrix, requirements)
 
     
-def suggested_changes_function(resume_text, job_offer, job_title):
+def suggested_changes_function(resume_text, job_offer):
     with st.spinner('Generating suggested changes...'):
         feature_suggested_changes_prompt = PromptTemplate(
-            input_variables=["resume_text", "job_offer", "job_title"],
+            input_variables=["resume_text", "job_offer"],
             template="""You are an AI assistant designed to enhance and optimize resumes to better match specific job offers. 
-            Your task is to review the provided resume in light of the given job offer description and job title, and provide detailed suggestions for improvement.
+            Your task is to review the provided resume in light of the given job offer description and provide detailed suggestions for improvement.
         
             Follow these steps in order:
-            1. Identify and list matching soft skills, hard skills, qualifications, and experiences between the resume and the job offer.
-            2. Extract and list keywords from both the job offer and the resume.
+            1. Extract and list keywords from both the job offer and the resume.
+            2. Identify and list matching soft skills, hard skills, qualifications, and experiences between the resume and the job offer.
             3. Identify missing keywords in the resume that are present in the job offer.
-            4. Highlight keywords and skills implied by the resume that could be explicitly added.
+            4. Identify keywords and skills implied by the resume that could be explicitly added.
             5. Identify missing experiences in the resume that are implied and could be explicitly added.
-            6. Based on the previous lists, provide specific bullet-point suggestions for rephrasing, adding, or deleting keywords or experiences to enhance the resume's alignment with the job offer.
 
-            Summarize and output only points 4, 5, and 6(rename them as A, B and C).
+            Output a suggestions list using the following format and nothing else:
+                A. Rephrasing suggestions:
+                - <bullet-point list of rephrasing suggestions>
+                
+                B. Adding keywords and skills:
+                - <bullet-point list of additional keywords and skills>
+                
+                C. Adding missing experiences:
+                - <bullet-point list of additional experiences>
+
+            Ensure that the suggestions are highly relevant to the job offer, contextually appropriate, professionally beneficial, and they avoid redundant or unnecessary additions. Do not include any other text or explanations outside the specified format.
 
             resume_text: {resume_text}
             job_offer: {job_offer}
-            job_title: {job_title}
             """
         )
         with st.sidebar.container(border=True):
             st.text(f"Running prompt: {feature_suggested_changes_prompt.template}")
         feature_suggested_changes_chain = LLMChain(llm=model, prompt=feature_suggested_changes_prompt, verbose=False)
         suggested_changes = feature_suggested_changes_chain.run(resume_text=st.session_state.resume_text,
-                                                            job_offer=st.session_state.job_offer_text,
-                                                            job_title=st.session_state.job_title)
+                                                            job_offer=st.session_state.job_offer_text
+                                                            )
         st.session_state.suggested_changes = suggested_changes
         return suggested_changes
 
 
-def apply_changes_function (resume_text, suggested_changes):
+def apply_changes_function (resume_text, job_offer, suggested_changes):
     apply_changes_prompt = PromptTemplate(
-        input_variables=["resume_text", "suggested_changes"],
-        template=""" You are an AI assistant designed to enhance and optimize resumes to better match specific job offers.
-        Given a resume ({resume_text}) and a report with suggested changes ({suggested_changes}) you will have to apply the changes to create an updated new resume:
-            1. Keeping all the {resume_text} keywords, skills, qualifications, and experiences, add the suggested changes from {suggested_changes} to the new resume.
-            2. Apply the rephrasing suggestions to the new resume. 
+        input_variables=["resume_text", "job_offer", "suggested_changes"],
+        template="""You are an AI assistant designed to enhance and optimize resumes to better match specific job offers.
+        Given a resume ({resume_text}) and a report with suggested changes ({suggested_changes}), you will apply the changes to create an updated new resume:
             
-        After applying the previous changes, return the resultant new resume as output.
-        
+            1. Add the suggested changes from {suggested_changes} to the new resume, ensuring they fit naturally and contextually.
+            2. Apply the rephrasing suggestions while maintaining the overall coherence and focus of the resume.
+            3. Verify that the updated resume keep all the existing keywords, skills, qualifications, and experiences from the {resume_text} that are valuable for the job offer ({job_offer}).
+            4. Ensure that the new resume is well-structured, concise, and tailored to the job offer
+
+        Return the updated resume as the final output.
+
         resume_text: {resume_text}
+        job_offer: {job_offer}
         suggested_changes: {suggested_changes}
         """
     )
@@ -403,23 +410,25 @@ def apply_changes_function (resume_text, suggested_changes):
     apply_changes_chain = LLMChain(llm=model, prompt=apply_changes_prompt, verbose=False)
     with st.spinner("applying changes..."):
         resume_updated_text = apply_changes_chain.run(resume_text=st.session_state.resume_text,
-                                            suggested_changes= st.session_state.suggested_changes                                           
+                                                      job_offer=st.session_state.job_offer_text, 
+                                            suggested_changes= st.session_state.suggested_changes                                       
                                             )
         return resume_updated_text 
 
            
-def job_titles_list_function (resume_text, num_job_offers):
+def job_titles_list_function (resume_text, num_job_offers,job_title):
     job_titles_prompt = PromptTemplate(
         input_variables=["resume_text", "num_job_offers"],
         template=""" You are an AI assistant designed to enhance and optimize resumes to better match specific job offers.
-        Given a resume ({resume_text}) and an integer ({num_job_offers}):
-            1.Identify and return a list of the {num_job_offers} most relevant job titles that best match the skills and experience described in the resume. 
+        Given a resume ({resume_text}) and an integer ({num_job_offers}) and the current job_title ({job_title})::
+            1.Identify and return a list of the {num_job_offers} alternative job titles to the current one that best match the skills and experience described in the resume. 
             2.Focus on titles that directly align with the candidate's qualifications and consider factors like keywords, technologies mentioned, and past job roles.
         
         Return just the list of job titles as a bullet-point list.  
         
         resume_text: {resume_text}
         num_job_offers: {num_job_offers}
+        job_title: {job_title}
         """
     )
     with st.sidebar.container(border=True):
@@ -427,7 +436,8 @@ def job_titles_list_function (resume_text, num_job_offers):
     job_titles_chain = LLMChain(llm=model, prompt=job_titles_prompt, verbose=False)
     with st.spinner("generating job titles..."):
         job_titles = job_titles_chain.run(resume_text=st.session_state.resume_text,
-                                            num_job_offers=st.session_state.num_job_offers_input                                           
+                                            num_job_offers=st.session_state.num_job_offers_input,
+                                            job_title=st.session_state.job_title                                        
                                             )
         return job_titles  
 
@@ -454,6 +464,7 @@ def custom_prompt_function(user_prompt, resume_text, job_offer, job_title):
     
 
 def create_radar_chart(data):
+    
     categories = ["Soft skills", "Hard skills", "Experience", "Education and certifications", "Keywords"]
     num_vars = len(categories)
     
@@ -477,7 +488,7 @@ def create_radar_chart(data):
 
         ax.plot(angles, scores, linewidth=2, linestyle='solid', label=f"{model} ({temperature})", color=colors(idx))
         ax.fill(angles, scores, color=colors(idx), alpha=0.25)
-         # Add scores to the chart for the last entry only
+        # Add scores to the chart for the last entry only
         if idx == len(data) - 1:
             for angle, score in zip(angles, scores):
                 ax.annotate(str(score), xy=(angle, score), ha='center', va='bottom')
@@ -485,11 +496,42 @@ def create_radar_chart(data):
     ax.set_rlabel_position(5)
     plt.yticks([20, 40, 60, 80, 100], ["20", "40", "60", "80", "100"], color="grey", size=7)
     plt.ylim(0, 100)
+    ax.axhline(75, color='r', linestyle='--')
     plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
     # plt.title('Model Scores Radar Chart')
     plt.show()
 
 
+def create_bar_plot(data):
+    df = pd.DataFrame(data)
+    # Normalize the score JSON data
+    scores_df = pd.json_normalize(df['score'])
+    scores_df['model'] = df['model']
+    scores_df['temperature'] = df['temperature']
+
+    # Prepare the data for plotting
+    melted_df = scores_df.melt(id_vars=['model', 'temperature'], var_name='Category', value_name='Score')
+    melted_df['Label'] = melted_df['model'] + " (" + melted_df['temperature'].astype(str) + ")"
+
+    # Grouped bar chart where bars are grouped by category and colored by model + temperature
+    fig, ax = plt.subplots(figsize=(12, 8)) 
+    sns.barplot(data=melted_df, x='Category', y='Score', hue='Label', palette='viridis_r')
+
+    # Add a star symbol over the bars for those who have double asterisks at the end of the model value
+
+    plt.xlabel('')
+    plt.ylabel('')
+    # plt.title('Scores by Category for Different Models and Temperatures')
+    ax.text(-0.5, 75, '75', color='r')
+    ax.axhline(75, color='r', linestyle='--')
+    plt.legend(loc='upper right', title='Model (Temperature)')
+    plt.xticks(rotation=90, ha='right')
+    plt.tight_layout()
+    sns.despine()  
+    plt.show()    
+    
+    
+    
 # UI main structure
 tab1, tab2, tab3, tab4 = st.tabs(["Resume VS Job offer","Improve your Resume", "Job Search", "Try your custom prompt"])
 
@@ -519,10 +561,9 @@ with tab4:
     
 with container1:
     if feature_match_button:
-        if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
+        if st.session_state.job_offer_text and st.session_state.resume_text:
             match_answer = feature_match_function(resume_text=st.session_state.resume_text, 
-                                                   job_offer=st.session_state.job_offer_text, 
-                                                   job_title=st.session_state.job_title
+                                                   job_offer=st.session_state.job_offer_text
                                                    )
             analysis_text, radar_chart, scores_dict = match_report(match_answer)
             st.session_state.scores.append({'score': scores_dict,
@@ -560,29 +601,9 @@ with container1:
         st.write("##### Grouped Bar Chart of Scores by Category for Different Models and Temperatures")
         st.write("This chart shows grouped bars by category and colored by model and temperature. Even the distance between different model outputs some patterns are visible.")
         st.write("")
-        
-        df = pd.DataFrame(st.session_state.scores)
-        # Normalize the score JSON data
-        scores_df = pd.json_normalize(df['score'])
-        scores_df['model'] = df['model']
-        scores_df['temperature'] = df['temperature']
-
-        # Prepare the data for plotting
-        melted_df = scores_df.melt(id_vars=['model', 'temperature'], var_name='Category', value_name='Score')
-        melted_df['Label'] = melted_df['model'] + " (" + melted_df['temperature'].astype(str) + ")"
-
-        # Grouped bar chart where bars are grouped by category and colored by model + temperature
-        plt.figure(figsize=(12, 8))
-        sns.barplot(data=melted_df, x='Category', y='Score', hue='Label', palette='Set2')
-
-        plt.xlabel('')
-        plt.ylabel('')
-        # plt.title('Scores by Category for Different Models and Temperatures')
-        plt.legend(loc='upper right', title='Model (Temperature)')
-        plt.xticks(rotation=90, ha='right')
-        plt.tight_layout()
-        sns.despine()  
+        create_bar_plot(st.session_state.scores)
         st.pyplot(plt)
+        
 
         
     elif semantic_visualizations_button:
@@ -598,10 +619,9 @@ with container1:
             
 with container2:                                                  
     if feature_suggested_changes_button:
-        if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
+        if st.session_state.job_offer_text and st.session_state.resume_text:
             suggested_changes_answer = suggested_changes_function(resume_text=st.session_state.resume_text, 
-                                                   job_offer=st.session_state.job_offer_text, 
-                                                   job_title=st.session_state.job_title
+                                                   job_offer=st.session_state.job_offer_text
                                                    )
             st.markdown("### Suggested Changes")
             st.write("The following suggestions will help you to find other job opportunities that match with your profile")
@@ -613,10 +633,9 @@ with container2:
     if apply_changes_button:
         st.write("**Resume VS Job offer analysis will be applied for both resumes. (processing time: 1min aprox.)*")  
         if st.session_state.suggested_changes:
-            if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
+            if st.session_state.job_offer_text and st.session_state.resume_text:
                 original_match_answer = feature_match_function(resume_text=st.session_state.resume_text, 
-                                                    job_offer=st.session_state.job_offer_text, 
-                                                    job_title=st.session_state.job_title
+                                                    job_offer=st.session_state.job_offer_text
                                                     )
                 original_analysis_text, original_radar_chart, original_scores_dict = match_report(original_match_answer)
                 st.session_state.scores.append({'score': original_scores_dict,
@@ -625,13 +644,13 @@ with container2:
                                                 }) 
                     
                 resume_updated = apply_changes_function(resume_text=st.session_state.resume_text,
-                                                                    suggested_changes= st.session_state.suggested_changes)
+                                                        job_offer=st.session_state.job_offer_text,
+                                                        suggested_changes= st.session_state.suggested_changes)
                 st.session_state.suggested_changes = ""  
                 resume_updated_text = resume_updated.strip() 
                 st.session_state.resume_updated_text = resume_updated_text
                 new_match_answer = feature_match_function(resume_text=st.session_state.resume_updated_text, 
-                                                        job_offer=st.session_state.job_offer_text, 
-                                                        job_title=st.session_state.job_title
+                                                        job_offer=st.session_state.job_offer_text
                                                         )
                 new_analysis_text, new_radar_chart, new_scores_dict = match_report(new_match_answer)
                 st.session_state.scores.append({'score': new_scores_dict,
@@ -664,8 +683,7 @@ with container2:
                 st.warning("Please upload a resume and provide a job offer text and job title to proceed.")                
         else:
             st.warning("Please generate suggested changes before.")
-            
-    
+               
 with container3: 
     if feature_suggested_titles_button:
         if st.session_state.resume_text:
@@ -682,8 +700,7 @@ with container3:
             st.write("Suggested job titles based on the candidate's profile can expand the job search, uncovering opportunities that were previously overlooked.")
             suggested_job_titles_text= suggested_job_titles_answer.strip()
             st.write(suggested_job_titles_text)       
-        
-            
+                
 with container4:           
     if submit_user_prompt_button:
         if st.session_state.job_title and st.session_state.job_offer_text and st.session_state.resume_text:
