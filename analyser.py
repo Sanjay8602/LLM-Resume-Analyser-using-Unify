@@ -38,6 +38,20 @@ def extract_text_from_file(file):
     elif file_extension == 'docx':
         return extract_text_from_doc(file)
 
+# Define job titles and associated keywords
+job_title_keywords = {
+    "Data Scientist": ["machine learning", "data analysis", "python", "statistics"],
+    "Software Engineer": ["software development", "programming", "coding", "software architecture"],
+    # Add more job titles and associated keywords as needed
+}
+
+# Function to suggest job titles based on resume keywords
+def suggest_job_titles(resume_text):
+    matched_job_titles = []
+    for job_title, keywords in job_title_keywords.items():
+        if all(keyword in resume_text.lower() for keyword in keywords):
+            matched_job_titles.append(job_title)
+    return matched_job_titles
 
 # Configure the Streamlit page
 st.set_page_config("LLM Resume Analyser", page_icon="😎")  
